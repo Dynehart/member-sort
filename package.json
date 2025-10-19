@@ -1,0 +1,53 @@
+{
+    "name": "eslint-plugin-sort-member",
+    "version": "0.1.0",
+    "description": "An ESLint rule to reorder TypeScript class members",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "scripts": {
+        "build": "tsc",
+        "lint": "eslint . --ext .ts",
+        "test": "vitest"
+    },
+    "keywords": [
+        "eslint",
+        "eslintplugin",
+        "typescript",
+        "class",
+        "sort",
+        "members",
+        "rule"
+    ],
+    "author": "Your Name",
+    "license": "MIT",
+    "dependencies": {
+        "@typescript-eslint/utils": "^8.45.0"
+    },
+    "devDependencies": {
+        "@typescript-eslint/eslint-plugin": "^8.42.0",
+        "@typescript-eslint/parser": "^8.42.0",
+        "eslint": "^8.0.0",
+        "typescript": "^5.0.0",
+        "vitest": "^1.0.0"
+    },
+    "peerDependencies": {
+        "eslint": "^8.0.0",
+        "typescript": ">=4.0.0"
+    },
+    "exports": {
+        ".": {
+            "import": "./dist/index.js",
+            "types": "./dist/index.d.ts"
+        }
+    },
+    "eslintConfig": {
+        "root": true,
+        "parser": "@typescript-eslint/parser",
+        "plugins": [
+            "sort-member"
+        ],
+        "rules": {
+            "sort-member/sort-member": "error"
+        }
+    }
+}
