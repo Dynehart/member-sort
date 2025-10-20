@@ -1,13 +1,18 @@
 {
-    "name": "eslint-plugin-sort-member",
+    "name": "eslint-plugin-member-sort",
     "version": "0.1.0",
     "description": "An ESLint rule to reorder TypeScript class members",
-    "main": "dist/index.js",
-    "types": "dist/index.d.ts",
+    "main": "./dist/index.js",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "type": "module",
     "scripts": {
-        "build": "tsc",
+        "build": "tsdown  && pnpm link --global",
+        "build2": "./node_modules/.bin/tsdown && pnpm link --global",
         "lint": "eslint . --ext .ts",
-        "test": "vitest"
+        "dev": "tsdown --watch",
+        "test": "vitest",
+        "typecheck": "tsc --noEmit"
     },
     "keywords": [
         "eslint",
@@ -26,19 +31,20 @@
     "devDependencies": {
         "@typescript-eslint/eslint-plugin": "^8.42.0",
         "@typescript-eslint/parser": "^8.42.0",
+        "@types/node": "^24.7.2",
+        "bumpp": "^10.3.1",
         "eslint": "^8.0.0",
-        "typescript": "^5.0.0",
-        "vitest": "^1.0.0"
+        "tsdown": "^0.15.8",
+        "typescript": "^5.9.3",
+        "vitest": "^3.2.4"
     },
     "peerDependencies": {
         "eslint": "^8.0.0",
         "typescript": ">=4.0.0"
     },
     "exports": {
-        ".": {
-            "import": "./dist/index.js",
-            "types": "./dist/index.d.ts"
-        }
+        ".": "./dist/index.js",
+        "./package.json": "./package.json"
     },
     "eslintConfig": {
         "root": true,

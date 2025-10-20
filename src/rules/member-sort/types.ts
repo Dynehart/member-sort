@@ -10,14 +10,17 @@ export type MemberInfo = {
     name: string;
     type: "method" | "property";
     decorators: string[];
-    static?: boolean;
+
+    static: boolean;
     abstract: boolean;
-    override?: boolean;
+    override: boolean;
     readonly: boolean;
     async: boolean;
     private: boolean;
+
     accessibility: "public" | "private" | "protected";
-    kind?: string;
+
+    kind: "get" | "set" | "method" | "constructor";
     propertyType?: string;
     node: TSESTree.ClassElement;
 

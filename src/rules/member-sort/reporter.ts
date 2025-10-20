@@ -1,4 +1,4 @@
-import { RuleContext, RuleFix } from "@typescript-eslint/utils/ts-eslint";
+import type { RuleContext, RuleFix } from "@typescript-eslint/utils/ts-eslint";
 
 import type { SortClassMembersConfig, MemberInfo } from "./types.ts";
 import { TSESTree } from "@typescript-eslint/utils";
@@ -54,11 +54,10 @@ export const reportProblem = ({
             if (expected !== "before") {
                 return fixes; // 'after' is rarely safe
             }
-            const sourceCode = context.getSourceCode();
-            const sourceAfterToken = sourceCode.getTokenAfter(source.node);
+            const sourceAfterToken = context.sourceCode.getTokenAfter(source.node);
 
-            const sourceJSDoc = sourceCode.getCommentsBefore(source.node).slice(-1).pop();
-            const targetJSDoc = sourceCode.getCommentsBefore(target.node).slice(-1).pop();
+            const sourceJSDoc = context.sourceCode.getCommentsBefore(source.node).slice(-1).pop();
+            const targetJSDoc = context.sourceCode.getCommentsBefore(target.node).slice(-1).pop();
             const decorators = ("decorators" in target.node && target.node.decorators) || [];
             const targetDecorator = decorators.slice(-1).pop();
             const insertTargetNode = targetJSDoc || targetDecorator?.parent || target.node;
@@ -67,13 +66,13 @@ export const reportProblem = ({
             if (sourceJSDoc) {
                 fixes.push(fixer.remove(sourceJSDoc));
                 sourceText.push(
-                    `${sourceCode.getText(sourceJSDoc)}${determineNodeSeperator(sourceJSDoc, source.node)}`,
+                    `${context.sourceCode.getText(sourceJSDoc)}${determineNodeSeperator(sourceJSDoc, source.node)}`,
                 );
             }
 
             fixes.push(fixer.remove(source.node));
             sourceText.push(
-                `${sourceCode.getText(source.node)}${determineNodeSeperator(source.node, sourceAfterToken)}`,
+                `${context.sourceCode.getText(source.node)}${determineNodeSeperator(source.node, sourceAfterToken)}`,
             );
             fixes.push(fixer.insertTextBefore(insertTargetNode, sourceText.join("")));
             return fixes;

@@ -1,29 +1,64 @@
 import { AST_NODE_TYPES, ESLintUtils, TSESTree } from "@typescript-eslint/utils";
 
 import { schema } from "./schema";
-import { RuleContext } from "@typescript-eslint/utils/ts-eslint";
-import { RuleFunction } from "@typescript-eslint/utils/ts-eslint";
+import type { RuleContext } from "@typescript-eslint/utils/ts-eslint";
+import type { RuleFunction } from "@typescript-eslint/utils/ts-eslint";
 import { SourceCode } from "@typescript-eslint/utils/ts-eslint";
 
 import { isAccessor, reportProblem } from "./reporter";
-import {
-    type Order,
-    type SortClassMembersConfig,
-    type OrderItem,
-    type Groups,
-    type MemberInfo,
-    type Slot,
-    type AcceptableSlot,
-    OrderTypes,
+import type {
+    Order,
+    SortClassMembersConfig,
+    OrderItem,
+    Groups,
+    MemberInfo,
+    Slot,
+    AcceptableSlot,
     Slots,
 } from "./types";
+
+import { OrderTypes } from "./types";
 
 const createRule = ESLintUtils.RuleCreator((name) => `https://example.com/rule/${name}`);
 
 const sortClassMembersRule = (
-    context: Readonly<RuleContext<"unorderedMember" | "unorderedClass" | "noClassExpression", [SortClassMembersConfig]>>,
+    context: Readonly<
+        RuleContext<"unorderedMember" | "unorderedClass" | "noClassExpression", [SortClassMembersConfig]>
+    >,
 ): ESLintUtils.RuleListener => {
-    const options = context.options[0] || {};
+    const options = context.options[0] || {
+        // accessorPairPositioning: "together",
+        accessorPairPositioning: "getThenSet",
+        groupPrivateWithAccessors: true,
+        groups: {
+            "accessors": [
+                { name: "/on.+/", type: "method" },
+                "[accessor-pairs]",
+                "[conventional-private-methods]",
+                "[getters]",
+                "[setters]",
+            ],
+            "event-handlers": [{ name: "/on.+/", type: "method" }, "[conventional-private-methods]"],
+        },
+        order: [
+            "[static-properties]",
+            "[static-methods]",
+            "[properties]",
+            "[conventional-private-properties]",
+            "constructor",
+            // "[accessors]",
+            // "[event-handlers]", // reference the custom group defined in the "groups" property
+            "[methods]",
+            // "[conventional-private-methods]",
+            "[everything-else]",
+        ],
+        stopAfterFirstProblem: true,
+    };
+    // // TODO: handle defaults better
+    // if (!options) {
+    //     throw new Error("undefined defaults")
+    // }
+
     const stopAfterFirst = !!options.stopAfterFirstProblem;
     // const sortInterfaces = !!options.sortInterfaces;
     const accessorPairPositioning = options.accessorPairPositioning || "getThenSet";
@@ -55,6 +90,7 @@ const sortClassMembersRule = (
 
         members = members.filter((member) => member.acceptableSlots?.length);
 
+        console.log(groups)
         if (groupPrivateWithAccessors) {
             members = groupPrivateFieldsWithAccessors(members);
         }
@@ -75,12 +111,22 @@ const sortClassMembersRule = (
         }
     };
 
+    // disallowed
     const ClassExpression: RuleFunction<TSESTree.ClassExpression> = (node) => {
-        // disallowed
-        context.report({
-            node,
-            messageId: "noClassExpression",
-        });
+        const tokens = context.sourceCode.getTokens(node);
+        const classToken = tokens.find((token) => token.type === "Keyword" && token.value === "class");
+
+        if (classToken) {
+            context.report({
+                loc: classToken.loc,
+                messageId: "noClassExpression",
+            });
+        } else {
+            context.report({
+                node,
+                messageId: "noClassExpression",
+            });
+        }
     };
 
     const rules: ESLintUtils.RuleListener = {
@@ -105,7 +151,8 @@ export const rule = createRule({
         },
         messages: {
             unorderedMember: "Expected {{ source }} to come immediately {{ expected }} {{ target }}.",
-            unorderedClass: "Expected {{ source }} to come immediately {{ expected }} {{ target }}. ({{ more }} similar {{ problem }} in this class)",
+            unorderedClass:
+                "Expected {{ source }} to come immediately {{ expected }} {{ target }}. ({{ more }} similar {{ problem }} in this class)",
             noClassExpression: "Class Expressions are not supported",
         },
         fixable: "code",
@@ -117,6 +164,7 @@ export const rule = createRule({
 });
 
 const groupPrivateFieldsWithAccessors = (members: Array<MemberInfo>): Array<MemberInfo> => {
+    console.log("groupPrivateFieldsWithAccessors");
     const grouped = [];
     const used = new Set();
 
@@ -125,10 +173,13 @@ const groupPrivateFieldsWithAccessors = (members: Array<MemberInfo>): Array<Memb
 
         // Only consider private properties
         if (member.type === "property" && member.private) {
+            console.log("private", member);
             const name = normalizePrivateName(member.name);
             const matching = members.filter(
                 (m) => !used.has(m.id) && isAccessor(m) && normalizePrivateName(m.name) === name,
             );
+            console.log(matching);
+            console.log(used);
 
             if (matching.length > 0) {
                 grouped.push(member, ...matching);
@@ -139,11 +190,13 @@ const groupPrivateFieldsWithAccessors = (members: Array<MemberInfo>): Array<Memb
         }
 
         // Also handle conventional private (_foo) fields
-        if (member.type === "property" && !member.private && member.name.startsWith("_")) {
+        if (member.type === "property" && member.name.startsWith("_")) {
+            console.log("conventional", member);
             const name = member.name.replace(/^_+/, "");
             const matching = members.filter(
                 (m) => !used.has(m.id) && isAccessor(m) && normalizePrivateName(m.name) === name,
             );
+
             if (matching.length > 0) {
                 grouped.push(member, ...matching);
                 used.add(member.id);
@@ -160,7 +213,7 @@ const groupPrivateFieldsWithAccessors = (members: Array<MemberInfo>): Array<Memb
 };
 
 function normalizePrivateName(name: string): string {
-    return name.replace(/^_+|^#+/, "");
+    return name.replace(/^(#|_){1,2}/, "");
 }
 
 // -------------------
@@ -175,6 +228,8 @@ function getClassMemberInfos(
     orderedSlots: Slot[],
 ): MemberInfo[] {
     const classMemberNodes = classDeclaration.body.body;
+
+    console.log(classMemberNodes);
 
     const nonstatic = classMemberNodes.filter((x) => x.type !== AST_NODE_TYPES.StaticBlock);
     const nonindexed = nonstatic.filter((x) => x.type !== AST_NODE_TYPES.TSIndexSignature);
@@ -192,7 +247,7 @@ function getClassMemberInfos(
 }
 
 function getMemberInfo(node: ClassMember, sourceCode: Readonly<SourceCode>): MemberInfo {
-    const isPrivate = node.key.type === AST_NODE_TYPES.PrivateIdentifier;
+    const isPrivate = node.key.type === AST_NODE_TYPES.PrivateIdentifier || node.accessibility === "private";
     let name: string;
     let type: "property" | "method";
     let propertyType: string | undefined;
@@ -224,17 +279,17 @@ function getMemberInfo(node: ClassMember, sourceCode: Readonly<SourceCode>): Mem
         type = "property";
 
         if (isPrivate) {
-            if ("id" in node.key && node.key.id !== null) {
-                name = `#${node.key.id.name}`;
-            } else if ("name" in node.key) {
-                name = `#${node.key.name}`;
+            if ("name" in node.key) {
+                name = node.key.name;
+            } else if ("id" in node.key && node.key.id !== null) {
+                name = node.key.id.name;
             } else {
-                throw new Error();
+                throw new Error("private property has no id or name");
             }
         } else {
             const [first, second] = sourceCode.getFirstTokens(node.key, 2);
             if (!first) {
-                throw new Error();
+                throw new Error("private property has no first token");
             }
 
             name = second && second.type === "Identifier" ? second.value : first.value;
@@ -255,24 +310,24 @@ function getMemberInfo(node: ClassMember, sourceCode: Readonly<SourceCode>): Mem
             const keyAfterToken = sourceCode.getTokenAfter(node.key);
 
             if (!keyBeforeToken || !keyAfterToken) {
-                throw new Error();
+                throw new Error("does there need to be a before and after token?");
             }
 
             name = sourceCode.getText().slice(keyBeforeToken.range[0], keyAfterToken.range[1]);
         } else {
             if (isPrivate) {
-                if ("id" in node.key && node.key.id !== null) {
-                    throw new Error();
-                    // name = `#${node.key.id.name}`;
-                } else if ("name" in node.key) {
-                    name = `#${node.key.name}`;
+                if ("name" in node.key) {
+                    name = node.key.name;
+                } else if ("id" in node.key && node.key.id !== null) {
+                    throw new Error("this one makes no sense");
+                    name = node.key.id.name;
                 } else {
-                    throw new Error();
+                    throw new Error("private method has no stuff");
                 }
             } else if ("name" in node.key) {
                 name = node.key.name;
             } else {
-                throw new Error();
+                throw new Error("this one is confusing tooo");
             }
         }
         async = (node.value && "async" in node.value && node.value.async) ?? false;
@@ -280,10 +335,16 @@ function getMemberInfo(node: ClassMember, sourceCode: Readonly<SourceCode>): Mem
 
     const readonly = ("readonly" in node && node.readonly) ?? false;
     let kind: "constructor" | "get" | "method" | "set";
+
+    // example where kind doesn't exist:
+    // abstract class Base extends Phaser.Scene {
+    //     protected abstract debugging: boolean;
+    // }
+
     if ("kind" in node) {
         kind = node.kind;
     } else {
-        throw new Error();
+        // console.log(node)
     }
 
     return {

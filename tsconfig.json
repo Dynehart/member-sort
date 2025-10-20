@@ -1,31 +1,29 @@
 {
     "compilerOptions": {
-        "target": "ES2020",
-        "module": "nodenext",
-        "lib": ["ES2020"],
-        "declaration": true,
-        "outDir": "dist",
-        "rootDir": "src",
-        "strict": true,
-        "esModuleInterop": true,
-        "forceConsistentCasingInFileNames": true,
-        "skipLibCheck": true,
-        "moduleResolution": "nodenext",
-        "resolveJsonModule": true,
-
-        "isolatedModules": true,
+        "target": "esnext",
+        "lib": ["es2023", "dom"],
         "moduleDetection": "force",
-        /* Linting */
-        // strictPropertyInitialization was set to false due to the stupid way constructors behave
-        "strictPropertyInitialization": true,
+        "module": "preserve",
+        "moduleResolution": "bundler",
+        "resolveJsonModule": true,
+        "types": ["node"],
+        "declaration": true,
+        "emitDeclarationOnly": true,
+        "esModuleInterop": true,
+        "isolatedModules": true,
+        "verbatimModuleSyntax": true,
+        "skipLibCheck": true,
+
+        "strict": true,
         "noUnusedLocals": true,
-        "noUnusedParameters": true,
         "noFallthroughCasesInSwitch": true,
         "noUncheckedSideEffectImports": true,
-
         "noUncheckedIndexedAccess": true,
-        "experimentalDecorators": true
+
+        "outDir": "dist",
+        "rootDir": "src",
+
+        "forceConsistentCasingInFileNames": true
     },
-    "include": ["src"],
-    "exclude": ["dist", "node_modules", "tests"]
+    "include": ["src"]
 }
