@@ -1,0 +1,116 @@
+{
+    "editor.renderWhitespace": "boundary",
+    "files.autoSave": "afterDelay",
+    "files.autoSaveDelay": 2000,
+    "[jsonc]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.defaultColorDecorators": "always",
+        "prettier.trailingComma": "all"
+    },
+    "json.schemas": [
+        {
+            "fileMatch": ["settings.jsonc"],
+            "schema": {
+                "allowTrailingCommas": true
+            }
+        }
+    ],
+    "[typescript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[javascript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[json]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.defaultColorDecorators": "always"
+    },
+    "[yaml]": {
+        "editor.insertSpaces": true,
+        "editor.tabSize": 2,
+        "editor.autoIndent": "advanced",
+        "diffEditor.ignoreTrimWhitespace": false,
+        "editor.defaultColorDecorators": "never",
+        "editor.quickSuggestions": {
+            "strings": "on"
+        },
+
+        "prettier.tabWidth": 2
+    },
+    "indentRainbow.colors": [
+        // defaults
+        "rgba(255,255,64,0.07)",
+        "rgba(127,255,127,0.07)",
+        "rgba(255,127,255,0.07)",
+        "rgba(79,236,236,0.07)",
+
+        // added
+        "rgba(255,102,0,0.07)",
+        "rgba(51,51,255,0.07)"
+    ],
+    "scm.defaultViewMode": "tree",
+    "prettier.configPath": ".prettierrc",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+        "source.fixAll.ts": "always",
+        "source.fixAll.eslint": "always"
+    },
+    "editor.inlayHints.enabled": "offUnlessPressed",
+    "typescript.preferGoToSourceDefinition": true,
+    "javascript.preferGoToSourceDefinition": true,
+    "editor.gotoLocation.multipleDefinitions": "goto",
+    "editor.gotoLocation.multipleTypeDefinitions": "peek",
+    "typescript.inlayHints.functionLikeReturnTypes.enabled": true,
+    "typescript.inlayHints.parameterNames.enabled": "literals",
+    "typescript.inlayHints.parameterTypes.enabled": false,
+
+    "color-highlight.markerType": "dot-before",
+    "color-highlight.markRuler": false,
+    "todohighlight.keywords": [
+        // "DEBUG:",
+        // "REVIEW:",
+        // {
+        //     "text": "NOTE:",
+        //     "color": "#ff0000",
+        //     "backgroundColor": "yellow",
+        //     "overviewRulerColor": "grey"
+        // },
+        // {
+        //     "text": "HACK:",
+        //     "color": "#000",
+        //     "isWholeLine": false
+        // },
+        {
+            "text": "TODO:",
+            // "border": "1px solid red",
+            // "borderRadius": "2px" //NOTE: using borderRadius along with `border` or you will see nothing change
+            // "backgroundColor": "rgba(0,0,0,.2)",
+
+            // "overviewRulerColor": "#ffab00"
+            "overviewRulerColor": "rgba(0,0,0,0)"
+            //other styling properties goes here ...
+        },
+        {
+            "text": "FIX:",
+            "color": "red",
+            "backgroundColor": "#ffab00",
+            "overviewRulerColor": "red",
+            // "cursor": "pointer",
+            "border": "1px solid #eee",
+            "borderRadius": "2px",
+            "isWholeLine": true
+        }
+    ],
+    "todohighlight.defaultStyle": {
+        // "color": "red",
+        // "backgroundColor": "#ffab00",
+        // "overviewRulerColor": "#ffab00",
+        "backgroundColor": "rgba(0,0,0,0)",
+        "overviewRulerColor": "rgba(0,0,0,0)"
+        // "cursor": "pointer",
+        // "border": "1px solid #eee",
+        // "borderRadius": "2px"
+        // "isWholeLine": true
+        //other styling properties goes here ...
+    }
+}

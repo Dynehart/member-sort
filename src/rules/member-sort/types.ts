@@ -20,12 +20,14 @@ export type MemberInfo = {
 
     accessibility: "public" | "private" | "protected";
 
-    kind: "get" | "set" | "method" | "constructor";
+    kind: "get" | "set" | "method" | "constructor" | "property"
     propertyType?: string;
     node: TSESTree.ClassElement;
 
     // These are added later in the pipeline:
     id?: string;
+    subid?: string;
+
     acceptableSlots?: AcceptableSlot[];
     matchingAccessor?: string;
     isFirstAccessor?: boolean;

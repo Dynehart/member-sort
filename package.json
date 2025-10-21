@@ -7,7 +7,7 @@
     "types": "./dist/index.d.ts",
     "type": "module",
     "scripts": {
-        "build": "tsdown  && pnpm link --global",
+        "build": "tsdown && pnpm link --global",
         "build2": "./node_modules/.bin/tsdown && pnpm link --global",
         "lint": "eslint . --ext .ts",
         "dev": "tsdown --watch",
@@ -25,21 +25,27 @@
     ],
     "author": "Your Name",
     "license": "MIT",
-    "dependencies": {
-        "@typescript-eslint/utils": "^8.45.0"
-    },
     "devDependencies": {
+        "@eslint/js": "^9.38.0",
+        "@types/node": "^24.7.2",
         "@typescript-eslint/eslint-plugin": "^8.42.0",
         "@typescript-eslint/parser": "^8.42.0",
-        "@types/node": "^24.7.2",
+        "@typescript-eslint/utils": "^8.46.2",
         "bumpp": "^10.3.1",
-        "eslint": "^8.0.0",
-        "tsdown": "^0.15.8",
+        "eslint": "^9.35.0",
+        "eslint-config-prettier": "^10.1.8",
+        "eslint-import-resolver-node": "^0.3.9",
+        "eslint-import-resolver-typescript": "^4.4.4",
+        "eslint-plugin-import": "^2.32.0",
+        "eslint-plugin-simple-import-sort": "^12.1.1",
+        "eslint-plugin-sort": "^4.0.0",
+        "tsdown": "^0.15.9",
         "typescript": "^5.9.3",
+        "typescript-eslint": "^8.46.2",
         "vitest": "^3.2.4"
     },
     "peerDependencies": {
-        "eslint": "^8.0.0",
+        "eslint": "^9.35.0",
         "typescript": ">=4.0.0"
     },
     "exports": {

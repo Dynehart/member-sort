@@ -1,7 +1,7 @@
-import type { RuleContext, RuleFix } from "@typescript-eslint/utils/ts-eslint";
-
-import type { SortClassMembersConfig, MemberInfo } from "./types.ts";
 import { TSESTree } from "@typescript-eslint/utils";
+
+import type { MemberInfo, SortClassMembersConfig } from "./types.ts";
+import type { RuleContext, RuleFix } from "@typescript-eslint/utils/ts-eslint";
 
 type ProblemData = {
     source: string;
@@ -12,42 +12,38 @@ type ProblemData = {
 };
 
 export const reportProblem = ({
-    problem,
-    message,
     context,
-    stopAfterFirst,
-    problemCount,
     groupAccessors,
+    problem,
+    problemCount,
+    stopAfterFirst,
 }: {
     problem: {
         source: MemberInfo;
         target: MemberInfo;
         expected: string;
     };
-    message: string;
     context: Readonly<RuleContext<"unorderedMember" | "unorderedClass", [SortClassMembersConfig]>>;
     stopAfterFirst: boolean;
     problemCount: number;
     groupAccessors?: boolean;
 }): void => {
-    const { source, target, expected } = problem;
+    const { expected, source, target } = problem;
     const reportData: ProblemData = {
+        expected,
         source: getMemberDescription(source, { groupAccessors }),
         target: getMemberDescription(target, { groupAccessors }),
-        expected,
     };
 
     let messageId: "unorderedMember" | "unorderedClass" = "unorderedMember";
     if (stopAfterFirst && problemCount > 1) {
         messageId = "unorderedClass";
-        message += " ({{ more }} similar {{ problem }} in this class)";
+
         reportData.more = problemCount - 1;
         reportData.problem = problemCount === 2 ? "problem" : "problems";
     }
 
     context.report({
-        node: source.node,
-        messageId,
         data: reportData,
         fix(fixer) {
             const fixes: RuleFix[] = [];
@@ -77,6 +73,8 @@ export const reportProblem = ({
             fixes.push(fixer.insertTextBefore(insertTargetNode, sourceText.join("")));
             return fixes;
         },
+        messageId,
+        node: source.node,
     });
 };
 
@@ -135,9 +133,7 @@ const determineNodeSeperator = (
         | TSESTree.StringToken
         | TSESTree.TemplateToken
         | null,
-): string => {
-    return isTokenOnSameLine(first, second) ? " " : "\n";
-};
+): string => (isTokenOnSameLine(first, second) ? " " : "\n");
 
 const isTokenOnSameLine = (
     left:
@@ -172,6 +168,4 @@ const isTokenOnSameLine = (
         | TSESTree.StringToken
         | TSESTree.TemplateToken
         | null,
-): boolean => {
-    return left?.loc.end.line === right?.loc.start.line;
-};
+): boolean => left?.loc.end.line === right?.loc.start.line;

@@ -1,23 +1,21 @@
-import { AST_NODE_TYPES, ESLintUtils, TSESTree } from "@typescript-eslint/utils";
+import { AST_NODE_TYPES, AST_TOKEN_TYPES, ESLintUtils, TSESLint, TSESTree } from "@typescript-eslint/utils";
 
-import { schema } from "./schema";
-import type { RuleContext } from "@typescript-eslint/utils/ts-eslint";
-import type { RuleFunction } from "@typescript-eslint/utils/ts-eslint";
-import { SourceCode } from "@typescript-eslint/utils/ts-eslint";
-
+import { defaultOptions } from "./consts";
 import { isAccessor, reportProblem } from "./reporter";
+import { schema } from "./schema";
+import { OrderTypes } from "./types";
+
 import type {
-    Order,
-    SortClassMembersConfig,
-    OrderItem,
+    AcceptableSlot,
     Groups,
     MemberInfo,
+    Order,
+    OrderItem,
     Slot,
-    AcceptableSlot,
     Slots,
+    SortClassMembersConfig,
 } from "./types";
-
-import { OrderTypes } from "./types";
+import type { RuleContext, RuleFunction } from "@typescript-eslint/utils/ts-eslint";
 
 const createRule = ESLintUtils.RuleCreator((name) => `https://example.com/rule/${name}`);
 
@@ -26,42 +24,11 @@ const sortClassMembersRule = (
         RuleContext<"unorderedMember" | "unorderedClass" | "noClassExpression", [SortClassMembersConfig]>
     >,
 ): ESLintUtils.RuleListener => {
-    const options = context.options[0] || {
-        // accessorPairPositioning: "together",
-        accessorPairPositioning: "getThenSet",
-        groupPrivateWithAccessors: true,
-        groups: {
-            "accessors": [
-                { name: "/on.+/", type: "method" },
-                "[accessor-pairs]",
-                "[conventional-private-methods]",
-                "[getters]",
-                "[setters]",
-            ],
-            "event-handlers": [{ name: "/on.+/", type: "method" }, "[conventional-private-methods]"],
-        },
-        order: [
-            "[static-properties]",
-            "[static-methods]",
-            "[properties]",
-            "[conventional-private-properties]",
-            "constructor",
-            // "[accessors]",
-            // "[event-handlers]", // reference the custom group defined in the "groups" property
-            "[methods]",
-            // "[conventional-private-methods]",
-            "[everything-else]",
-        ],
-        stopAfterFirstProblem: true,
-    };
-    // // TODO: handle defaults better
-    // if (!options) {
-    //     throw new Error("undefined defaults")
-    // }
+    const options = context.options[0] || defaultOptions;
 
     const stopAfterFirst = !!options.stopAfterFirstProblem;
     // const sortInterfaces = !!options.sortInterfaces;
-    const accessorPairPositioning = options.accessorPairPositioning || "getThenSet";
+    const accessorPairPositioning = options.accessorPairPositioning ?? "getThenSet";
     const order = options.order || [];
     const groups = { ...builtInGroups, ...options.groups };
     const orderedSlots = getExpectedOrder(order, groups);
@@ -75,13 +42,11 @@ const sortClassMembersRule = (
         // check for out-of-order and separated get/set pairs
         const accessorPairProblems = findAccessorPairProblems(members, accessorPairPositioning);
         for (const problem of accessorPairProblems) {
-            const message = "Expected {{ source }} to come immediately {{ expected }} {{ target }}.";
             reportProblem({
-                problem,
                 context,
-                message,
-                stopAfterFirst,
+                problem,
                 problemCount: accessorPairProblems.length,
+                stopAfterFirst,
             });
             if (stopAfterFirst) break;
         }
@@ -90,7 +55,6 @@ const sortClassMembersRule = (
 
         members = members.filter((member) => member.acceptableSlots?.length);
 
-        console.log(groups)
         if (groupPrivateWithAccessors) {
             members = groupPrivateFieldsWithAccessors(members);
         }
@@ -98,14 +62,12 @@ const sortClassMembersRule = (
         // check member positions against rule order
         const problems = findProblems(members, locale);
         for (const problem of problems) {
-            const message = "Expected {{ source }} to come {{ expected }} {{ target }}.";
             reportProblem({
-                problem,
-                message,
                 context,
-                stopAfterFirst,
-                problemCount: problems.length,
                 groupAccessors,
+                problem,
+                problemCount: problems.length,
+                stopAfterFirst,
             });
             if (stopAfterFirst) break;
         }
@@ -114,7 +76,7 @@ const sortClassMembersRule = (
     // disallowed
     const ClassExpression: RuleFunction<TSESTree.ClassExpression> = (node) => {
         const tokens = context.sourceCode.getTokens(node);
-        const classToken = tokens.find((token) => token.type === "Keyword" && token.value === "class");
+        const classToken = tokens.find((token) => token.type === AST_TOKEN_TYPES.Keyword && token.value === "class");
 
         if (classToken) {
             context.report({
@@ -123,8 +85,8 @@ const sortClassMembersRule = (
             });
         } else {
             context.report({
-                node,
                 messageId: "noClassExpression",
+                node,
             });
         }
     };
@@ -141,95 +103,97 @@ const sortClassMembersRule = (
     return rules;
 };
 
-export const rule = createRule({
-    name: "sort-member",
-    meta: {
-        type: "suggestion",
-        docs: {
-            description:
-                "Enforce consistent members order, optionally grouping private fields with their respective getters/setters.",
-        },
-        messages: {
-            unorderedMember: "Expected {{ source }} to come immediately {{ expected }} {{ target }}.",
-            unorderedClass:
-                "Expected {{ source }} to come immediately {{ expected }} {{ target }}. ({{ more }} similar {{ problem }} in this class)",
-            noClassExpression: "Class Expressions are not supported",
-        },
-        fixable: "code",
-        schema,
-    },
-    defaultOptions: [{}],
+const groupPrivateFieldsWithAccessors = (members: MemberInfo[]): MemberInfo[] => {
+    // map member.id -> original index so we can preserve original ordering for matches
+    const indexMap = new Map<string, number>();
+    members.forEach((m, i) => {
+        if (m.id !== undefined) {
+            indexMap.set(m.id, i);
+        }
+    });
+    console.log(members.map((x) => x.name));
 
-    create: sortClassMembersRule,
-});
-
-const groupPrivateFieldsWithAccessors = (members: Array<MemberInfo>): Array<MemberInfo> => {
-    console.log("groupPrivateFieldsWithAccessors");
-    const grouped = [];
-    const used = new Set();
+    const grouped: MemberInfo[] = [];
+    const used = new Set<string>();
 
     for (const member of members) {
-        if (used.has(member.id)) continue;
+        if (member.id !== undefined && used.has(member.id)) continue;
+        if (member.id === undefined) continue;
 
-        // Only consider private properties
+        // we only apply this to `private _foo` or `#foo`
         if (member.type === "property" && member.private) {
-            console.log("private", member);
-            const name = normalizePrivateName(member.name);
-            const matching = members.filter(
-                (m) => !used.has(m.id) && isAccessor(m) && normalizePrivateName(m.name) === name,
-            );
-            console.log(matching);
-            console.log(used);
+            // compute the canonical base name to match against accessors
+            // support both "#foo", "_foo" and "__foo" and plain "foo"
+            const baseName = normalizePrivateName(member.name);
 
-            if (matching.length > 0) {
-                grouped.push(member, ...matching);
-                used.add(member.id);
-                matching.forEach((m) => used.add(m.id));
-                continue;
+            // Find accessors with same normalized name and same staticness
+            const matching = members
+                .filter(
+                    (m) =>
+                        m.id !== undefined &&
+                        !used.has(m.id) &&
+                        isAccessor(m) &&
+                        m.static === member.static &&
+                        normalizePrivateName(m.name) === baseName,
+                )
+                // TODO: there shouldn't me multiple accessors
+                .filter((m) => m.isFirstAccessor ?? true)
+                // sort by original index
+                .sort(
+                    (a, b) =>
+                        (a.id !== undefined ? indexMap.get(a.id) ?? 0 : 0) -
+                        (b.id !== undefined ? indexMap.get(b.id) ?? 0 : 0),
+                );
+
+            // private field without setter or getter
+            if (!matching[0]) continue;
+
+            member.acceptableSlots = matching[0].acceptableSlots;
+
+            if (!member.acceptableSlots?.[0]) {
+                throw new Error();
             }
+            member.acceptableSlots[0].score = member.acceptableSlots[0].score - 1;
+
+            // push the property first, then the matching accessors (keeping their internal order)
+            grouped.push(member, ...matching);
+            used.add(member.id);
+            matching.forEach((m) => m.id !== undefined && used.add(m.id));
+            continue;
         }
 
-        // Also handle conventional private (_foo) fields
-        if (member.type === "property" && member.name.startsWith("_")) {
-            console.log("conventional", member);
-            const name = member.name.replace(/^_+/, "");
-            const matching = members.filter(
-                (m) => !used.has(m.id) && isAccessor(m) && normalizePrivateName(m.name) === name,
-            );
-
-            if (matching.length > 0) {
-                grouped.push(member, ...matching);
-                used.add(member.id);
-                matching.forEach((m) => used.add(m.id));
-                continue;
-            }
-        }
-
+        // otherwise, leave member in place
         grouped.push(member);
         used.add(member.id);
     }
 
+    // reassign ids so that subsequent sorting checks use the new order
+    grouped.forEach((m, i) => {
+        m.id = String(i);
+    });
+
+    console.log(grouped.map((x) => x.name));
+
     return grouped;
 };
 
-function normalizePrivateName(name: string): string {
-    return name.replace(/^(#|_){1,2}/, "");
-}
-
-// -------------------
-// Existing Functions (unchanged from original rule)
-// -------------------
+/**
+ * converts all of the below to `foo`
+ * * `_foo`
+ * * `#foo`
+ * * `_#foo`
+ * * `__foo`
+ */
+const normalizePrivateName = (name: string): string => name.replace(/^(#|_){1,2}/, "");
 
 type ClassMember = Exclude<TSESTree.ClassElement, TSESTree.StaticBlock | TSESTree.TSIndexSignature>;
 
-function getClassMemberInfos(
-    classDeclaration: TSESTree.ClassDeclaration, // | TSESTree.ClassExpression
-    sourceCode: Readonly<SourceCode>,
+const getClassMemberInfos = (
+    classDeclaration: TSESTree.ClassDeclaration,
+    sourceCode: Readonly<TSESLint.SourceCode>,
     orderedSlots: Slot[],
-): MemberInfo[] {
+): MemberInfo[] => {
     const classMemberNodes = classDeclaration.body.body;
-
-    console.log(classMemberNodes);
 
     const nonstatic = classMemberNodes.filter((x) => x.type !== AST_NODE_TYPES.StaticBlock);
     const nonindexed = nonstatic.filter((x) => x.type !== AST_NODE_TYPES.TSIndexSignature);
@@ -244,9 +208,9 @@ function getClassMemberInfos(
         });
 
     return members;
-}
+};
 
-function getMemberInfo(node: ClassMember, sourceCode: Readonly<SourceCode>): MemberInfo {
+const getMemberInfo = (node: ClassMember, sourceCode: Readonly<TSESLint.SourceCode>): MemberInfo => {
     const isPrivate = node.key.type === AST_NODE_TYPES.PrivateIdentifier || node.accessibility === "private";
     let name: string;
     let type: "property" | "method";
@@ -292,7 +256,7 @@ function getMemberInfo(node: ClassMember, sourceCode: Readonly<SourceCode>): Mem
                 throw new Error("private property has no first token");
             }
 
-            name = second && second.type === "Identifier" ? second.value : first.value;
+            name = second?.type === AST_TOKEN_TYPES.Identifier ? second.value : first.value;
         }
 
         if (node.typeAnnotation) {
@@ -320,7 +284,7 @@ function getMemberInfo(node: ClassMember, sourceCode: Readonly<SourceCode>): Mem
                     name = node.key.name;
                 } else if ("id" in node.key && node.key.id !== null) {
                     throw new Error("this one makes no sense");
-                    name = node.key.id.name;
+                    // name = node.key.id.name;
                 } else {
                     throw new Error("private method has no stuff");
                 }
@@ -333,8 +297,8 @@ function getMemberInfo(node: ClassMember, sourceCode: Readonly<SourceCode>): Mem
         async = (node.value && "async" in node.value && node.value.async) ?? false;
     }
 
-    const readonly = ("readonly" in node && node.readonly) ?? false;
-    let kind: "constructor" | "get" | "method" | "set";
+    const readonly = "readonly" in node && node.readonly;
+    let kind: "constructor" | "get" | "method" | "set" | "property";
 
     // example where kind doesn't exist:
     // abstract class Base extends Phaser.Scene {
@@ -343,32 +307,34 @@ function getMemberInfo(node: ClassMember, sourceCode: Readonly<SourceCode>): Mem
 
     if ("kind" in node) {
         kind = node.kind;
+    } else if (type === "property") {
+        kind = "property";
     } else {
-        // console.log(node)
+        throw new Error("something went wrong");
     }
 
     return {
-        name,
-        type,
-        decorators,
-        static: node.static,
         abstract,
-        override: node.override,
-        readonly: readonly,
-        async,
-        private: isPrivate,
         accessibility,
+        async,
+        decorators,
         kind,
-        propertyType,
+        name,
         node,
+        override: node.override,
+        private: isPrivate,
+        propertyType,
+        readonly: readonly,
+        static: node.static,
+        type,
     };
-}
+};
 
-function findAccessorPairProblems(
+const findAccessorPairProblems = (
     members: MemberInfo[],
     positioning: "getThenSet" | "setThenGet" | "together" | "any",
-): Array<{ source: MemberInfo; target: MemberInfo; expected: string }> {
-    const problems: Array<{ source: MemberInfo; target: MemberInfo; expected: string }> = [];
+): { source: MemberInfo; target: MemberInfo; expected: string }[] => {
+    const problems: { source: MemberInfo; target: MemberInfo; expected: string }[] = [];
     if (positioning === "any") return problems;
 
     forEachPair(members, (first, second, firstIndex, secondIndex) => {
@@ -380,87 +346,91 @@ function findAccessorPairProblems(
 
             if (outOfOrder || outOfPosition) {
                 const expected = outOfOrder ? "before" : "after";
-                problems.push({ source: second, target: first, expected });
+                problems.push({ expected, source: second, target: first });
             }
         }
     });
 
     return problems;
-}
+};
 
-function findProblems(
+const findProblems = (
     members: MemberInfo[],
     locale: string,
-): Array<{ source: MemberInfo; target: MemberInfo; expected: string }> {
-    const problems: Array<{ source: MemberInfo; target: MemberInfo; expected: string }> = [];
+): { source: MemberInfo; target: MemberInfo; expected: string }[] => {
+    const problems: { source: MemberInfo; target: MemberInfo; expected: string }[] = [];
     const collator = new Intl.Collator(locale);
 
     forEachPair(members, (first, second) => {
         if (!areMembersInCorrectOrder(first, second, collator)) {
-            problems.push({ source: second, target: first, expected: "before" });
+            problems.push({ expected: "before", source: second, target: first });
         }
     });
 
     return problems;
-}
+};
 
-function forEachPair<T>(
+const forEachPair = <T>(
     list: T[],
     callback: (first: T, second: T, firstIndex: number, secondIndex: number) => void,
-): void {
+): void => {
     list.forEach((first, firstIndex) => {
         list.slice(firstIndex + 1).forEach((second, secondIndex) => {
             callback(first, second, firstIndex, firstIndex + secondIndex + 1);
         });
     });
-}
+};
 
-function areMembersInCorrectOrder(first: MemberInfo, second: MemberInfo, collator: Intl.Collator): boolean {
-    return (
-        first.acceptableSlots?.some((a) =>
-            second.acceptableSlots?.some((b) =>
-                a.index === b.index && areSlotsAlphabeticallySorted(a, b)
-                    ? collator.compare(first.name, second.name) <= 0
-                    : a.index <= b.index,
-            ),
-        ) || false
-    );
-}
+const areMembersInCorrectOrder = (first: MemberInfo, second: MemberInfo, collator: Intl.Collator): boolean => {
+    if (first.acceptableSlots === undefined) return false;
 
-function areSlotsAlphabeticallySorted(a: AcceptableSlot, b: AcceptableSlot): boolean {
-    return a.sort === "alphabetical" && b.sort === "alphabetical";
-}
+    return first.acceptableSlots.some((a) => {
+        if (second.acceptableSlots === undefined) return true;
 
-function getAcceptableSlots(memberInfo: MemberInfo, orderedSlots: Slot[]): AcceptableSlot[] {
-    return orderedSlots
+        return second.acceptableSlots.some((b) =>
+            a.index === b.index && areSlotsAlphabeticallySorted(a, b)
+                ? collator.compare(first.name, second.name) <= 0
+                : a.index <= b.index,
+        );
+    });
+};
+
+const areSlotsAlphabeticallySorted = (a: AcceptableSlot, b: AcceptableSlot): boolean =>
+    a.sort === "alphabetical" && b.sort === "alphabetical";
+
+const getAcceptableSlots = (memberInfo: MemberInfo, orderedSlots: Slot[]): AcceptableSlot[] =>
+    orderedSlots
         .map((slot, index) => ({ index, score: scoreMember(memberInfo, slot), sort: slot.sort }))
         .filter(({ score }) => score > 0)
         .sort((a, b) => b.score - a.score)
-        .filter(({ score }, _i, array) => score === array?.[0]?.score)
+        .filter(({ score }, _i, array) => score === array[0]?.score)
         .sort((a, b) => b.index - a.index);
-}
 
-function scoreMember(memberInfo: MemberInfo, slot: Slot): number {
-    if (!Object.keys(slot).length) return 1;
+const scoreMember = (memberInfo: MemberInfo, slot: Slot): number => {
+    if (Object.keys(slot).length === 0) return 1;
 
-    const scores = comparers.map(({ property, value, test }) => {
+    let totalScore = 0;
+    let failed = false;
+    for (const { property, test, value } of comparers) {
         if (slot[property] !== undefined) {
-            return test(memberInfo, slot) ? value : -1;
+            if (test(memberInfo, slot)) {
+                totalScore += value;
+            } else {
+                failed = true;
+                break;
+            }
         }
-        return 0;
-    });
+    }
 
-    if (scores.indexOf(-1) !== -1) return -1;
-    return scores.reduce((a, b) => a + b);
-}
+    return failed ? -1 : totalScore;
+};
 
-function getExpectedOrder(order: OrderItem[], groups: Groups): Slot[] {
-    return flatten<Slot>(order.map((s) => flat(expandSlot(s, groups))));
-}
+const getExpectedOrder = (order: OrderItem[], groups: Groups): Slot[] =>
+    flatten<Slot>(order.map((s) => flat(expandSlot(s, groups))));
 
 // this feels bad
-const flat = (slots: Slots[]): Slot[] => {
-    return flatten<Slot>(
+const flat = (slots: Slots[]): Slot[] =>
+    flatten<Slot>(
         slots.map((slot) => {
             if (Array.isArray(slot)) {
                 return flat(slot);
@@ -468,22 +438,19 @@ const flat = (slots: Slots[]): Slot[] => {
             return slot;
         }),
     );
-};
 
-function expandSlot(input: Order, groups: Groups): Slots[] {
+const expandSlot = (input: Order, groups: Groups): Slots[] => {
     if (Array.isArray(input)) return input.map((x: OrderItem) => expandSlot(x, groups));
 
     let slot: Slot;
     if (typeof input === "string") {
-        slot = input[0] === "[" ? { group: input.substr(1, input.length - 2) } : { name: input };
+        slot = input.startsWith("[") ? { group: input.substring(1, input.length - 1) } : { name: input };
     } else {
         slot = { ...input };
     }
 
-    if (slot.group) {
+    if (slot.group !== undefined) {
         if (Object.prototype.hasOwnProperty.call(groups, slot.group)) {
-            if (slot.group === undefined) return [];
-
             const group = groups[slot.group];
             if (group === undefined) return [];
 
@@ -492,15 +459,15 @@ function expandSlot(input: Order, groups: Groups): Slots[] {
         return [];
     }
 
-    const testName = slot.name && getStringComparer(slot.name);
-    if (testName) {
+    const testName = slot.name !== undefined && getStringComparer(slot.name);
+    if (testName !== false) {
         slot.testName = testName;
     }
 
     return [slot];
-}
+};
 
-function matchAccessorPairs(members: MemberInfo[]) {
+const matchAccessorPairs = (members: MemberInfo[]) => {
     forEachPair(members, (first, second) => {
         const isMatch = first.name === second.name && first.static === second.static;
         if (isAccessor(first) && isAccessor(second) && isMatch) {
@@ -509,42 +476,43 @@ function matchAccessorPairs(members: MemberInfo[]) {
             second.matchingAccessor = first.id;
         }
     });
-}
+};
 
-function getStringComparer(str: string): (s: string) => boolean {
-    if (str[0] === "/") {
-        let strPattern = str.substr(1, str.length - 2);
-        if (strPattern[0] !== "^") strPattern = `^${strPattern}`;
-        if (strPattern[strPattern.length - 1] !== "$") strPattern += "$";
+const getStringComparer = (str: string): ((s: string) => boolean) => {
+    // is regex pattern
+    if (str.startsWith("/")) {
+        let strPattern = str.substring(1, str.length - 1);
+        if (!strPattern.startsWith("^")) strPattern = `^${strPattern}`;
+        if (!strPattern.endsWith("$")) strPattern += "$";
         const re = new RegExp(strPattern);
         return (s) => re.test(s);
     }
     return (s) => s === str;
-}
+};
 
-function flatten<T>(collection: (T | T[])[]): T[] {
+const flatten = <T>(collection: (T | T[])[]): T[] => {
     const result = [];
     for (const item of collection) {
         if (Array.isArray(item)) result.push(...flatten(item));
         else result.push(item);
     }
     return result;
-}
+};
 
 const builtInGroups: Groups = {
-    "constructor": { type: OrderTypes.method, name: "constructor" },
-    "properties": { type: "property" },
-    "getters": { kind: "get" },
-    "setters": { kind: "set" },
     "accessor-pairs": { accessorPair: true },
-    "static-properties": { type: "property", static: true },
-    "conventional-private-properties": { type: "property", name: "/_.+/" },
     "arrow-function-properties": { propertyType: "ArrowFunctionExpression" },
-    "methods": { type: "method" },
-    "static-methods": { type: "method", static: true },
-    "async-methods": { type: "method", async: true },
-    "conventional-private-methods": { type: "method", name: "/_.+/" },
+    "async-methods": { async: true, type: "method" },
+    "constructor": { name: "constructor", type: OrderTypes.method },
+    "conventional-private-methods": { name: "/_.+/", type: "method" },
+    "conventional-private-properties": { name: "/_.+/", type: "property" },
     "everything-else": {},
+    "getters": { kind: "get" },
+    "methods": { type: "method" },
+    "properties": { type: "property" },
+    "setters": { kind: "set" },
+    "static-methods": { static: true, type: "method" },
+    "static-properties": { static: true, type: "property" },
 };
 
 const comparers: {
@@ -564,42 +532,69 @@ const comparers: {
     value: number;
     test: (m: MemberInfo, s: Slot) => boolean;
 }[] = [
-    { property: "name", value: 100, test: (m, s) => s.testName !== undefined && s.testName(m.name) },
-    { property: "type", value: 10, test: (m, s) => s.type === m.type },
-    { property: "static", value: 10, test: (m, s) => s.static === m.static },
-    { property: "async", value: 10, test: (m, s) => s.async === m.async },
-    { property: "private", value: 10, test: (m, s) => s.private === m.private },
-    { property: "accessibility", value: 10, test: (m, s) => s.accessibility == m.accessibility },
-    { property: "abstract", value: 10, test: (m, s) => s.abstract == m.abstract },
-    { property: "override", value: 10, test: (m, s) => s.override == m.override },
-    { property: "readonly", value: 10, test: (m, s) => s.readonly == m.readonly },
+    // Core grouping signals
+    { property: "type", test: (m, s) => s.type === m.type, value: 10 }, // 5
+    { property: "static", test: (m, s) => s.static === m.static, value: 10 }, // 4
+    { property: "accessibility", test: (m, s) => s.accessibility === m.accessibility, value: 10 }, // 4
+    { property: "private", test: (m, s) => s.private === m.private, value: 10 }, // 4
     {
         property: "kind",
-        value: 10,
         test: (m, s) => {
             if (s.kind === "accessor") return isAccessor(m);
             else if (s.kind === "nonAccessor") return !isAccessor(m);
-            else return s.kind === m.kind;
+            return s.kind === m.kind;
         },
+        value: 10, // 3
     },
+
+    // Additional classification signals
+    { property: "abstract", test: (m, s) => s.abstract === m.abstract, value: 10 }, // 2
+    { property: "override", test: (m, s) => s.override === m.override, value: 10 }, // 2
+    { property: "readonly", test: (m, s) => s.readonly === m.readonly, value: 10 }, // 2
+    { property: "async", test: (m, s) => s.async === m.async, value: 10 }, // 1
+
+    // Weak matchers (decorators, name, etc.)
     {
         property: "groupByDecorator",
-        value: 10,
         test: (m, s) => {
             if (s.groupByDecorator === undefined) return false;
-
             if (typeof s.groupByDecorator === "boolean") {
-                const hasDecorators = m.decorators.length > 0;
-                return s.groupByDecorator === hasDecorators;
+                return s.groupByDecorator === m.decorators.length > 0;
             }
-
             const comparer = getStringComparer(s.groupByDecorator);
             return m.decorators.some((decorator) => comparer(decorator));
         },
+        value: 10, // 1
     },
     {
         property: "accessorPair",
-        value: 20,
         test: (m: MemberInfo, _s: Slot) => isAccessor(m) && m.matchingAccessor !== undefined,
+        value: 10, // 20
     },
+    // Leaves enough space for grouping by name
+    { property: "name", test: (m, s) => s.testName?.(m.name) === true, value: 100 },
 ];
+
+export const rule = createRule({
+    create: sortClassMembersRule,
+    defaultOptions: [{}],
+    meta: {
+        docs: {
+            description:
+                "Enforce consistent members order, optionally grouping private fields with their respective getters/setters.",
+        },
+        fixable: "code",
+        messages: {
+            // unorderedClass:
+            //     "Expected {{ source }} to come {{ expected }} {{ target }}. ({{ more }} similar {{ problem }} in this class)",
+            noClassExpression: "Class Expressions are not supported",
+            unorderedClass:
+                "Expected {{ source }} to come immediately {{ expected }} {{ target }}. ({{ more }} similar {{ problem }} in this class)",
+            unorderedMember: "Expected {{ source }} to come immediately {{ expected }} {{ target }}.",
+        },
+        schema,
+        type: "suggestion",
+    },
+
+    name: "sort-member",
+});

@@ -13,15 +13,15 @@ export const schema: readonly JSONSchema4[] = [
                             properties: {
                                 abstract: { type: "boolean" },
                                 accessibility: {
-                                    type: "string", // Added 'type'
                                     enum: ["public", "private", "protected"],
+                                    type: "string",
                                 },
                                 accessorPair: { type: "boolean" },
                                 async: { type: "boolean" },
                                 groupByDecorator: { oneOf: [{ type: "string" }, { type: "boolean" }] },
                                 kind: {
-                                    type: "string", // Added 'type'
                                     enum: ["get", "set", "accessor", "nonAccessor"],
+                                    type: "string",
                                 },
                                 name: { type: "string" },
                                 override: { type: "boolean" },
@@ -29,13 +29,13 @@ export const schema: readonly JSONSchema4[] = [
                                 propertyType: { type: "string" },
                                 readonly: { type: "boolean" },
                                 sort: {
-                                    type: "string", // Added 'type'
                                     enum: ["alphabetical", "none"],
+                                    type: "string",
                                 },
                                 static: { type: "boolean" },
                                 type: {
-                                    type: "string", // Added 'type'
                                     enum: ["method", "property"],
+                                    type: "string",
                                 },
                             },
                             type: "object",
@@ -48,18 +48,18 @@ export const schema: readonly JSONSchema4[] = [
         id: "https://github.com/dynehart/eslint-plugin-member-order/v1",
         properties: {
             accessorPairPositioning: {
-                type: "string",
                 enum: ["getThenSet", "setThenGet", "together", "any"],
+                type: "string",
             },
             groupPrivateWithAccessors: {
                 type: "boolean",
             },
             groups: {
-                type: "object",
                 additionalProperties: false,
                 patternProperties: {
                     "^.+$": { $ref: "#/definitions/order" },
                 },
+                type: "object",
             },
             locale: {
                 type: "string",

@@ -1,1 +1,1 @@
-export { memberSort } from "./member-sort";
+export { defaultOptions, memberSort } from "./member-sort";
