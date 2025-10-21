@@ -7,8 +7,9 @@
     "types": "./dist/index.d.ts",
     "type": "module",
     "scripts": {
-        "build": "tsdown && pnpm link --global",
-        "build2": "./node_modules/.bin/tsdown && pnpm link --global",
+        "build": "tsdown",
+        "build2": "./node_modules/.bin/tsdown && link",
+        "link": "pnpm link --global",
         "lint": "eslint . --ext .ts",
         "dev": "tsdown --watch",
         "test": "vitest",
@@ -61,5 +62,8 @@
         "rules": {
             "sort-member/sort-member": "error"
         }
+    },
+    "dependencies": {
+        "eslint-plugin-member-sort": "link:"
     }
 }

@@ -3,12 +3,13 @@ import { AST_NODE_TYPES, AST_TOKEN_TYPES, ESLintUtils, TSESLint, TSESTree } from
 import { defaultOptions } from "./consts";
 import { isAccessor, reportProblem } from "./reporter";
 import { schema } from "./schema";
-import { OrderTypes } from "./types";
 
 import type {
     AcceptableSlot,
     Groups,
+    Kind,
     MemberInfo,
+    MessageIds,
     Order,
     OrderItem,
     Slot,
@@ -20,23 +21,24 @@ import type { RuleContext, RuleFunction } from "@typescript-eslint/utils/ts-esli
 const createRule = ESLintUtils.RuleCreator((name) => `https://example.com/rule/${name}`);
 
 const sortClassMembersRule = (
-    context: Readonly<
-        RuleContext<"unorderedMember" | "unorderedClass" | "noClassExpression", [SortClassMembersConfig]>
-    >,
+    context: Readonly<RuleContext<MessageIds, [SortClassMembersConfig]>>,
 ): ESLintUtils.RuleListener => {
-    const options = context.options[0] || defaultOptions;
+    const options = context.options[0];
 
-    const stopAfterFirst = !!options.stopAfterFirstProblem;
-    // const sortInterfaces = !!options.sortInterfaces;
-    const accessorPairPositioning = options.accessorPairPositioning ?? "getThenSet";
-    const order = options.order || [];
-    const groups = { ...builtInGroups, ...options.groups };
+    const stopAfterFirst = options.stopAfterFirstProblem;
+    // const sortInterfaces = options.sortInterfaces;
+    const accessorPairPositioning = options.accessorPairPositioning;
+    const order = options.order;
+    const groups = options.groups;
+    const groupPrivateWithAccessors = options.groupPrivateWithAccessors;
+
     const orderedSlots = getExpectedOrder(order, groups);
+
     const groupAccessors = accessorPairPositioning !== "any";
     const locale = options.locale || "en-US";
-    const groupPrivateWithAccessors = !!options.groupPrivateWithAccessors;
 
     const ClassDeclaration: RuleFunction<TSESTree.ClassDeclaration> = (node) => {
+        console.log("START START START", node.body.parent.id?.name);
         let members = getClassMemberInfos(node, context.sourceCode, orderedSlots);
 
         // check for out-of-order and separated get/set pairs
@@ -44,6 +46,7 @@ const sortClassMembersRule = (
         for (const problem of accessorPairProblems) {
             reportProblem({
                 context,
+                messageId: "accessorPair",
                 problem,
                 problemCount: accessorPairProblems.length,
                 stopAfterFirst,
@@ -53,18 +56,65 @@ const sortClassMembersRule = (
 
         members = members.filter((m) => !(m.matchingAccessor && !m.isFirstAccessor));
 
-        members = members.filter((member) => member.acceptableSlots?.length);
+        // members.forEach((m) => {
+        //     if (m.acceptableSlots?.length === 0) {
+        //         console.log(m);
+        //     }
+        // });
+
+        // members.forEach((member) => {
+        //     console.log(member.name);
+        //     member.acceptableSlots?.forEach((slot) => {
+        //         console.log(member.name, slot, member.accessibility, member.type);
+        //     });
+        // });
+
+        // members.forEach((m, i) => {
+        //     console.log(m.name, m.id, i);
+        // });
 
         if (groupPrivateWithAccessors) {
-            members = groupPrivateFieldsWithAccessors(members);
+            // TODO: we need a better way to order within each group
+            const collator = new Intl.Collator(locale);
+
+            members.forEach((first, firstIndex) => {
+                members.slice(firstIndex + 1).forEach((second) => {
+                    if (first.acceptableSlots?.[0] === undefined || second.acceptableSlots?.[0] === undefined) {
+                        throw new Error("shouldn't happen");
+                    }
+
+                    membersInCorrectOrderFirstPass(
+                        first,
+                        second,
+                        collator,
+                        options.alphabetical,
+                        
+                    );
+                });
+            });
+
+            // console.log("groupPrivateWithAccessors");
+            groupPrivateFieldsWithAccessors(members);
         }
 
+        members.forEach((member) => {
+            console.log(member.name);
+            member.acceptableSlots?.forEach((slot) => {
+                console.log(member.name, slot);
+            });
+        });
+
+        members.forEach((m, i) => {
+            console.log(m.name, m.id, i);
+        });
+
         // check member positions against rule order
-        const problems = findProblems(members, locale);
+        const problems = findProblems(members, locale, options.alphabetical);
         for (const problem of problems) {
             reportProblem({
                 context,
                 groupAccessors,
+                messageId: "unorderedMember",
                 problem,
                 problemCount: problems.length,
                 stopAfterFirst,
@@ -103,7 +153,7 @@ const sortClassMembersRule = (
     return rules;
 };
 
-const groupPrivateFieldsWithAccessors = (members: MemberInfo[]): MemberInfo[] => {
+const groupPrivateFieldsWithAccessors = (members: MemberInfo[]): void => {
     // map member.id -> original index so we can preserve original ordering for matches
     const indexMap = new Map<string, number>();
     members.forEach((m, i) => {
@@ -111,14 +161,17 @@ const groupPrivateFieldsWithAccessors = (members: MemberInfo[]): MemberInfo[] =>
             indexMap.set(m.id, i);
         }
     });
-    console.log(members.map((x) => x.name));
 
-    const grouped: MemberInfo[] = [];
     const used = new Set<string>();
 
     for (const member of members) {
-        if (member.id !== undefined && used.has(member.id)) continue;
-        if (member.id === undefined) continue;
+        if (member.id !== undefined && used.has(member.name)) {
+            continue;
+            // throw new Error(`${member.name} with id:${member.id} is a duplicate`);
+        }
+        if (member.id === undefined) {
+            throw new Error(`${member.name} has not had an id set`);
+        }
 
         // we only apply this to `private _foo` or `#foo`
         if (member.type === "property" && member.private) {
@@ -126,55 +179,53 @@ const groupPrivateFieldsWithAccessors = (members: MemberInfo[]): MemberInfo[] =>
             // support both "#foo", "_foo" and "__foo" and plain "foo"
             const baseName = normalizePrivateName(member.name);
 
-            // Find accessors with same normalized name and same staticness
+            // Find accessors with same name as the normalized name and the same staticness
             const matching = members
                 .filter(
                     (m) =>
                         m.id !== undefined &&
-                        !used.has(m.id) &&
+                        !used.has(m.name) &&
                         isAccessor(m) &&
                         m.static === member.static &&
-                        normalizePrivateName(m.name) === baseName,
+                        m.name === baseName,
                 )
                 // TODO: there shouldn't me multiple accessors
                 .filter((m) => m.isFirstAccessor ?? true)
                 // sort by original index
                 .sort(
                     (a, b) =>
-                        (a.id !== undefined ? indexMap.get(a.id) ?? 0 : 0) -
-                        (b.id !== undefined ? indexMap.get(b.id) ?? 0 : 0),
+                        (b.id !== undefined ? indexMap.get(b.id) ?? 0 : 0) -
+                        (a.id !== undefined ? indexMap.get(a.id) ?? 0 : 0),
                 );
 
-            // private field without setter or getter
-            if (!matching[0]) continue;
+            // console.log(`matching ${member.name} to:\n`, matching);
+            // does not have a matching setter or getter
+            // if (matching.length === 0) continue;
 
-            member.acceptableSlots = matching[0].acceptableSlots;
+            // private field without setter or getter that have been sorted
+            if (!matching[0]) {
+                used.add(member.name);
+                continue;
+            }
 
-            if (!member.acceptableSlots?.[0]) {
+            if (!matching[0].acceptableSlots) {
                 throw new Error();
             }
-            member.acceptableSlots[0].score = member.acceptableSlots[0].score - 1;
 
-            // push the property first, then the matching accessors (keeping their internal order)
-            grouped.push(member, ...matching);
-            used.add(member.id);
-            matching.forEach((m) => m.id !== undefined && used.add(m.id));
-            continue;
+            const slot = matching[0].acceptableSlots[0];
+            if (slot) {
+                console.log("this shit");
+                member.acceptableSlots = [{ ...slot, score: slot.score - 1 }];
+            } else {
+                console.log("shouldn't really happen");
+            }
+
+            // mark both getter and setters as used
+            matching.forEach((m) => used.add(m.name));
         }
 
-        // otherwise, leave member in place
-        grouped.push(member);
-        used.add(member.id);
+        used.add(member.name);
     }
-
-    // reassign ids so that subsequent sorting checks use the new order
-    grouped.forEach((m, i) => {
-        m.id = String(i);
-    });
-
-    console.log(grouped.map((x) => x.name));
-
-    return grouped;
 };
 
 /**
@@ -203,7 +254,7 @@ const getClassMemberInfos = (
         .map((member, i) => ({ ...getMemberInfo(member, sourceCode), id: String(i) }))
         .map((memberInfo, _i, memberInfos) => {
             matchAccessorPairs(memberInfos);
-            const acceptableSlots = getAcceptableSlots(memberInfo, orderedSlots);
+            const acceptableSlots = [getAcceptableSlot(memberInfo, orderedSlots)];
             return { ...memberInfo, acceptableSlots };
         });
 
@@ -298,7 +349,7 @@ const getMemberInfo = (node: ClassMember, sourceCode: Readonly<TSESLint.SourceCo
     }
 
     const readonly = "readonly" in node && node.readonly;
-    let kind: "constructor" | "get" | "method" | "set" | "property";
+    let kind: Kind;
 
     // example where kind doesn't exist:
     // abstract class Base extends Phaser.Scene {
@@ -308,7 +359,7 @@ const getMemberInfo = (node: ClassMember, sourceCode: Readonly<TSESLint.SourceCo
     if ("kind" in node) {
         kind = node.kind;
     } else if (type === "property") {
-        kind = "property";
+        kind = null;
     } else {
         throw new Error("something went wrong");
     }
@@ -357,13 +408,16 @@ const findAccessorPairProblems = (
 const findProblems = (
     members: MemberInfo[],
     locale: string,
+    alphabetical: boolean,
 ): { source: MemberInfo; target: MemberInfo; expected: string }[] => {
     const problems: { source: MemberInfo; target: MemberInfo; expected: string }[] = [];
     const collator = new Intl.Collator(locale);
 
     forEachPair(members, (first, second) => {
-        if (!areMembersInCorrectOrder(first, second, collator)) {
+        if (!areMembersInCorrectOrder(first, second, collator, alphabetical, true)) {
             problems.push({ expected: "before", source: second, target: first });
+            // after will get ignored by fixes but is helpful to show
+            problems.push({ expected: "after", source: first, target: second });
         }
     });
 
@@ -381,40 +435,143 @@ const forEachPair = <T>(
     });
 };
 
-const areMembersInCorrectOrder = (first: MemberInfo, second: MemberInfo, collator: Intl.Collator): boolean => {
+/** this one does index, then alphabetical then score to help pre-sort */
+const membersInCorrectOrderFirstPass = (
+    first: MemberInfo,
+    second: MemberInfo,
+    collator: Intl.Collator,
+    alphabetical: boolean,
+    test: boolean = true
+): void => {
+    if (first.acceptableSlots?.[0] === undefined) return
+
+    first.acceptableSlots.forEach((a) => {
+        if (second.acceptableSlots === undefined) return
+
+        second.acceptableSlots.forEach((b) => {
+            if (test === true) {
+                console.log(`${first.name}: ${a.index}.${a.score} vs ${second.name}: ${b.index}.${b.score}`);
+            }
+
+            if (a.index !== b.index) {
+                if (test === true) {
+                    console.log("a.index !== b.index", a.index < b.index);
+                }
+                return
+            }
+
+            if (a.score !== b.score) {
+                if (test === true) {
+                    console.log("a.score !== b.score", a.score < b.score);
+                }
+                return
+            }
+
+            // alphabetical within group
+            if (alphabetical || areSlotsAlphabeticallySorted(a, b)) {
+                if (test === true) {
+                    console.log(`collator.compare(${first.name}, ${second.name})`, collator.compare(first.name, second.name) <= 0);
+                    // console.log(`areSlotsAlphabeticallySorted(a, b)`);
+                }
+                if (collator.compare(first.name, second.name) <= 0) {
+                    b.score = a.score + 10
+                        console.log(`setting ${second.name} to ${first.name}+1`);
+                } else {
+                    a.score = b.score + 10
+                        console.log(`setting ${first.name} to ${second.name}+1`);
+                }
+            }
+        });
+    });
+};
+
+const areMembersInCorrectOrder = (
+    first: MemberInfo,
+    second: MemberInfo,
+    collator: Intl.Collator,
+    alphabetical: boolean,
+    test?: boolean,
+): boolean => {
     if (first.acceptableSlots === undefined) return false;
 
     return first.acceptableSlots.some((a) => {
         if (second.acceptableSlots === undefined) return true;
 
-        return second.acceptableSlots.some((b) =>
-            a.index === b.index && areSlotsAlphabeticallySorted(a, b)
-                ? collator.compare(first.name, second.name) <= 0
-                : a.index <= b.index,
-        );
+        return second.acceptableSlots.some((b) => {
+            if (test === true) {
+                console.log(`${first.name}: ${a.index}.${a.score} vs ${second.name}: ${b.index}.${b.score}`);
+            }
+
+            if (a.index !== b.index) {
+                if (test === true) {
+                    console.log("a.index !== b.index", a.index < b.index);
+                }
+                return a.index < b.index;
+            }
+
+            if (a.score !== b.score) {
+                if (test === true) {
+                    console.log("a.score !== b.score", a.score < b.score);
+                }
+                return a.score < b.score;
+            }
+
+            // alphabetical within group
+            if (alphabetical || areSlotsAlphabeticallySorted(a, b)) {
+                if (test === true) {
+                    console.log(areSlotsAlphabeticallySorted(a, b));
+                }
+                return collator.compare(first.name, second.name) <= 0;
+            }
+
+            // if nothing else triggers, we assume the order is fine
+            // TODO: i'd rather be opinionated
+            return true;
+        });
     });
 };
 
+// TODO: add a global override?
 const areSlotsAlphabeticallySorted = (a: AcceptableSlot, b: AcceptableSlot): boolean =>
     a.sort === "alphabetical" && b.sort === "alphabetical";
+
+// TODO: there should only be one acceptable slot so maybe replace getAcceptableSlots entirely
+const getAcceptableSlot = (memberInfo: MemberInfo, orderedSlots: Slot[]): AcceptableSlot => {
+    const acceptableSlots = getAcceptableSlots(memberInfo, orderedSlots);
+    if (!acceptableSlots[0]) throw new Error();
+    return acceptableSlots[0];
+};
 
 const getAcceptableSlots = (memberInfo: MemberInfo, orderedSlots: Slot[]): AcceptableSlot[] =>
     orderedSlots
         .map((slot, index) => ({ index, score: scoreMember(memberInfo, slot), sort: slot.sort }))
         .filter(({ score }) => score > 0)
+        // these two steps remove the slots that score lower than the highest slot?
         .sort((a, b) => b.score - a.score)
         .filter(({ score }, _i, array) => score === array[0]?.score)
-        .sort((a, b) => b.index - a.index);
+
+        // sorts by the index
+        // .sort((a, b) => b.index - a.index);
+        .sort((a, b) => a.index - b.index);
 
 const scoreMember = (memberInfo: MemberInfo, slot: Slot): number => {
     if (Object.keys(slot).length === 0) return 1;
 
+    // TODO: using total score results in hard to predict behavior
+    // e.g. an item that should end up in an earlier group can score higher with a later group.
+    // we should always respect the user's group ordering
+    // simply take the highest score (they're all equally weighted)
+
+    // the reason we have totalScore is if we had [methods] followed by [private-methods], the more specific one should win
+    // but this doesn't work when the specificity seems higher but isn't e.g. [private-methods] vs [getters] has 2 matchers on private methods and 1 on getters
+    // the reason being that more specificity may be required for certain rules but not actually mean they should override everything else
     let totalScore = 0;
     let failed = false;
     for (const { property, test, value } of comparers) {
         if (slot[property] !== undefined) {
             if (test(memberInfo, slot)) {
-                totalScore += value;
+                // totalScore += value;
+                totalScore = Math.max(totalScore, value);
             } else {
                 failed = true;
                 break;
@@ -444,6 +601,7 @@ const expandSlot = (input: Order, groups: Groups): Slots[] => {
 
     let slot: Slot;
     if (typeof input === "string") {
+        // extracts group name
         slot = input.startsWith("[") ? { group: input.substring(1, input.length - 1) } : { name: input };
     } else {
         slot = { ...input };
@@ -459,10 +617,7 @@ const expandSlot = (input: Order, groups: Groups): Slots[] => {
         return [];
     }
 
-    const testName = slot.name !== undefined && getStringComparer(slot.name);
-    if (testName !== false) {
-        slot.testName = testName;
-    }
+    slot.testName = getStringComparer(slot.name);
 
     return [slot];
 };
@@ -478,7 +633,11 @@ const matchAccessorPairs = (members: MemberInfo[]) => {
     });
 };
 
-const getStringComparer = (str: string): ((s: string) => boolean) => {
+const getStringComparer = (str?: string): ((s: string) => boolean) => {
+    if (str === undefined) {
+        return () => true;
+    }
+
     // is regex pattern
     if (str.startsWith("/")) {
         let strPattern = str.substring(1, str.length - 1);
@@ -497,22 +656,6 @@ const flatten = <T>(collection: (T | T[])[]): T[] => {
         else result.push(item);
     }
     return result;
-};
-
-const builtInGroups: Groups = {
-    "accessor-pairs": { accessorPair: true },
-    "arrow-function-properties": { propertyType: "ArrowFunctionExpression" },
-    "async-methods": { async: true, type: "method" },
-    "constructor": { name: "constructor", type: OrderTypes.method },
-    "conventional-private-methods": { name: "/_.+/", type: "method" },
-    "conventional-private-properties": { name: "/_.+/", type: "property" },
-    "everything-else": {},
-    "getters": { kind: "get" },
-    "methods": { type: "method" },
-    "properties": { type: "property" },
-    "setters": { kind: "set" },
-    "static-methods": { static: true, type: "method" },
-    "static-properties": { static: true, type: "property" },
 };
 
 const comparers: {
@@ -572,12 +715,16 @@ const comparers: {
         value: 10, // 20
     },
     // Leaves enough space for grouping by name
-    { property: "name", test: (m, s) => s.testName?.(m.name) === true, value: 100 },
+    {
+        property: "name",
+        test: (m, s) => s.testName?.(m.name) === true,
+        value: 10, // 100
+    },
 ];
 
 export const rule = createRule({
     create: sortClassMembersRule,
-    defaultOptions: [{}],
+    defaultOptions: [defaultOptions],
     meta: {
         docs: {
             description:
@@ -585,6 +732,7 @@ export const rule = createRule({
         },
         fixable: "code",
         messages: {
+            accessorPair: "Expected accessor pair {{ source }} to come {{ expected }} {{ target }}.",
             // unorderedClass:
             //     "Expected {{ source }} to come {{ expected }} {{ target }}. ({{ more }} similar {{ problem }} in this class)",
             noClassExpression: "Class Expressions are not supported",

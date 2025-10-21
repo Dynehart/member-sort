@@ -6,23 +6,44 @@ export type AcceptableSlot = {
     sort?: "alphabetical" | "none";
 };
 
-export type MemberInfo = {
+export type OrderType = "method" | "property";
+
+export type Kind = "constructor" | "get" | "method" | "set" | null;
+
+
+// export declare type ClassElement = AccessorProperty | MethodDefinition | PropertyDefinition | StaticBlock | TSAbstractAccessorProperty | TSAbstractMethodDefinition | TSAbstractPropertyDefinition | TSIndexSignature;
+type Member = {
     name: string;
-    type: "method" | "property";
+    type: OrderType;
     decorators: string[];
 
-    static: boolean;
     abstract: boolean;
-    override: boolean;
-    readonly: boolean;
     async: boolean;
+    override: boolean;
     private: boolean;
+    readonly: boolean;
+    static: boolean;
 
-    accessibility: "public" | "private" | "protected";
+    accessibility: "public" | "protected" | "private";
+    // only properties seem to have no kind on the node
+    kind: Kind
 
-    kind: "get" | "set" | "method" | "constructor" | "property"
-    propertyType?: string;
+    propertyType?: string; //
+};
+
+type MemberStuff = Omit<Member, 'kind'> & {
+    kind: "constructor" | "get" | "method" | "set" | "accessor" | "nonAccessor";
+    accessorPair?: boolean;
+    groupByDecorator?: string | boolean;
+    sort?: "alphabetical" | "none";
+    testName?: (s: string) => boolean;
+    group?: string;
+};
+
+export type MemberInfo = Member & {
     node: TSESTree.ClassElement;
+
+    hasGetter?: boolean;
 
     // These are added later in the pipeline:
     id?: string;
@@ -33,63 +54,33 @@ export type MemberInfo = {
     isFirstAccessor?: boolean;
 };
 
-export type Slots =
-    | Slots[]
-    | {
-          name?: string;
-          type?: "method" | "property";
-          kind?: "get" | "set" | "accessor" | "nonAccessor";
-          static?: boolean;
-          async?: boolean;
-          private?: boolean;
-          accessibility?: "public" | "protected" | "private";
-          abstract?: boolean;
-          override?: boolean;
-          readonly?: boolean;
-          propertyType?: string;
-          accessorPair?: boolean;
-          groupByDecorator?: string | boolean;
-          testName?: (s: string) => boolean;
-          sort?: "alphabetical" | "none";
-
-          group?: string;
-      };
-
-export type Slot = Exclude<Slots, Slots[]>;
-
-export type OrderType = "method" | "property";
-
 export const OrderTypes: { method: OrderType; property: OrderType } = {
     method: "method",
     property: "property",
 };
 
-export type OrderItem =
-    | string
-    | {
-          abstract?: boolean;
-          accessibility?: "public" | "private" | "protected";
-          accessorPair?: boolean;
-          async?: boolean;
-          groupByDecorator?: string | boolean;
-          kind?: "get" | "set" | "accessor" | "nonAccessor";
-          name?: string;
-          override?: boolean;
-          private?: boolean;
-          propertyType?: string;
-          readonly?: boolean;
-          sort?: "alphabetical" | "none";
-          static?: boolean;
-          type?: OrderType;
-      };
+export type OrderItem = string | Partial<MemberStuff>;
 
+export type Slots = Slots[] | Partial<MemberStuff>;
+
+// Slot === Order
+export type Slot = Exclude<OrderItem, string>;
 export type Order = OrderItem | OrderItem[];
 
-export type Groups = {
-    [groupName: string]: Order;
-};
+export type Groups = Record<string, Order>;
 
 export type SortClassMembersConfig = {
+    accessorPairPositioning: "getThenSet" | "setThenGet" | "together" | "any";
+    groupPrivateWithAccessors: boolean;
+    groups: Groups;
+    locale: string;
+    order: OrderItem[];
+    sortInterfaces: boolean;
+    stopAfterFirstProblem: boolean;
+    alphabetical: boolean;
+};
+
+export type SortClassMembersConfigInput = {
     accessorPairPositioning?: "getThenSet" | "setThenGet" | "together" | "any";
     groupPrivateWithAccessors?: boolean;
     groups?: Groups;
@@ -97,4 +88,7 @@ export type SortClassMembersConfig = {
     order?: OrderItem[];
     sortInterfaces?: boolean;
     stopAfterFirstProblem?: boolean;
+    alphabetical: boolean;
 };
+
+export type MessageIds = "unorderedMember" | "unorderedClass" | "noClassExpression" | "accessorPair"

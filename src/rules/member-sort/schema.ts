@@ -51,6 +51,9 @@ export const schema: readonly JSONSchema4[] = [
                 enum: ["getThenSet", "setThenGet", "together", "any"],
                 type: "string",
             },
+            alphabetical: {
+                type: "boolean",
+            },
             groupPrivateWithAccessors: {
                 type: "boolean",
             },
