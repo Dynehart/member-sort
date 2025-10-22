@@ -63,8 +63,5 @@
         "rules": {
             "sort-member/sort-member": "error"
         }
-    },
-    "dependencies": {
-        "eslint-plugin-member-sort": "link:"
     }
 }
