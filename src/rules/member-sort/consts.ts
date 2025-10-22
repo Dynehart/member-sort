@@ -1,4 +1,7 @@
-import { OrderTypes, type SortClassMembersConfig } from "./types";
+
+import { OrderTypes } from "./types";
+
+import type { SortClassMembersConfig } from "./types";
 
 export const defaultOptions: SortClassMembersConfig = {
     accessorPairPositioning: "any",

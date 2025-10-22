@@ -1,4 +1,4 @@
-import { AST_TOKEN_TYPES, TSESTree } from "@typescript-eslint/utils";
+import { TSESTree } from "@typescript-eslint/utils";
 
 import type { MemberInfo, MessageIds, SortClassMembersConfig } from "./types.ts";
 import type { RuleContext, RuleFix } from "@typescript-eslint/utils/ts-eslint";
@@ -9,16 +9,6 @@ type ProblemData = {
     expected: string;
     more?: number;
     problem?: "problem" | "problems";
-};
-
-const getComments = (
-    context: Readonly<RuleContext<MessageIds, [SortClassMembersConfig]>>,
-    source: MemberInfo,
-): TSESTree.Node => {
-    // .slice(-1).pop(); ???
-    const comments: TSESTree.Comment[] = context.sourceCode.getCommentsBefore(source.node);
-    // TODO: maintain spacing
-    return comments;
 };
 
 export const reportProblem = ({
@@ -65,15 +55,13 @@ export const reportProblem = ({
 
             const sourceAfterToken = context.sourceCode.getTokenAfter(source.node);
 
-            const sourceJSDoc = context.sourceCode.getCommentsBefore(source.node).slice(-1).pop();
-
             // .slice is to prevent modification of the original array
             const targetJSDoc = context.sourceCode.getCommentsBefore(target.node).slice(-1).pop();
             const decorators = "decorators" in target.node ? target.node.decorators : [];
             // TODO: this is a problem with multiple decorators
             const targetDecorator = decorators.slice(-1).pop();
             const insertTargetNode = targetJSDoc ?? targetDecorator?.parent ?? target.node;
-            const sourceText: string[] = ["\n"];
+            const sourceText: string[] = [];
 
             const sourceComments: TSESTree.Comment[] = context.sourceCode.getCommentsBefore(source.node);
 
@@ -85,7 +73,6 @@ export const reportProblem = ({
                     const newlines = "\n".repeat(comment.loc.start.line - prevLine - 1);
                     prevLine = comment.loc.end.line;
 
-
                     // only happens when it's a line comment.
                     // TODO: I'm assuming formatting issues if the comment start is less than the node start
                     if (comment.loc.start.column > source.node.loc.start.column) {
@@ -94,7 +81,7 @@ export const reportProblem = ({
 
                     fixes.push(fixer.remove(comment));
                     sourceText.push(
-                        // // this fucks up comments on the same line as the previous node
+                        // the very first
                         `${newlines}${spacing}${context.sourceCode.getText(comment)}${determineNodeSeperator(
                             comment,
                             source.node,
@@ -102,13 +89,6 @@ export const reportProblem = ({
                     );
                 }
             }
-
-            // if (sourceJSDoc) {
-            //     fixes.push(fixer.remove(sourceJSDoc));
-            //     sourceText.push(
-            //         `${context.sourceCode.getText(sourceJSDoc)}${determineNodeSeperator(sourceJSDoc, source.node)}`,
-            //     );
-            // }
 
             fixes.push(fixer.remove(source.node));
             sourceText.push(
@@ -118,12 +98,29 @@ export const reportProblem = ({
                 )}`,
             );
 
-            // newline + spacing for the node we're inserting before
-            if (source.private)
-            sourceText.push("\n")
+            if (sourceAfterToken) {
+                const emptyLines = sourceAfterToken.loc.start.line - source.node.loc.end.line;
+                // remove any empty lines after the node including self
+                if (emptyLines > 0) {
+                    fixes.push(fixer.removeRange([source.node.range[1], sourceAfterToken.range[0]]));
+                }
+            }
+
+            // if (target.isLazyLoader !== true) {}
+            // newline for any nodes other than accessors
+            sourceText.push("\n");
+            // spacing for the node we're inserting before
             sourceText.push(" ".repeat(insertTargetNode.loc.start.column));
 
-            fixes.push(fixer.insertTextBefore(insertTargetNode, sourceText.join("")));
+            // TODO: something is adding an unexpected indentation I can't get rid of easily
+            // fixes.push(fixer.insertTextBeforeRange([insertTargetNode.range[0]-insertTargetNode.loc.start.column, insertTargetNode.range[1]], sourceText.join("")));
+            fixes.push(
+                fixer.replaceTextRange(
+                    [insertTargetNode.range[0] - insertTargetNode.loc.start.column, insertTargetNode.range[0]],
+                    sourceText.join(""),
+                ),
+            );
+            // fixes.push(fixer.insertTextBefore(insertTargetNode, sourceText.join("")));
             return fixes;
         },
         messageId,

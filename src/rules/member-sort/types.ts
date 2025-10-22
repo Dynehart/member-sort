@@ -10,7 +10,7 @@ export type OrderType = "method" | "property";
 
 export type Kind = "constructor" | "get" | "method" | "set" | null;
 
-
+// TODO: probably can construct this using the actual types of ClassElement
 // export declare type ClassElement = AccessorProperty | MethodDefinition | PropertyDefinition | StaticBlock | TSAbstractAccessorProperty | TSAbstractMethodDefinition | TSAbstractPropertyDefinition | TSIndexSignature;
 type Member = {
     name: string;
@@ -26,12 +26,12 @@ type Member = {
 
     accessibility: "public" | "protected" | "private";
     // only properties seem to have no kind on the node
-    kind: Kind
+    kind: Kind;
 
     propertyType?: string; //
 };
 
-type MemberStuff = Omit<Member, 'kind'> & {
+type Order = Omit<Member, "kind"> & {
     kind: "constructor" | "get" | "method" | "set" | "accessor" | "nonAccessor";
     accessorPair?: boolean;
     groupByDecorator?: string | boolean;
@@ -43,12 +43,12 @@ type MemberStuff = Omit<Member, 'kind'> & {
 export type MemberInfo = Member & {
     node: TSESTree.ClassElement;
 
-    hasGetter?: boolean;
+    isLazyLoader?: boolean;
 
-    // These are added later in the pipeline:
+    // i don't remember what this does
     id?: string;
-    subid?: string;
 
+    // TODO: this might make sense as a singular element
     acceptableSlots?: AcceptableSlot[];
     matchingAccessor?: string;
     isFirstAccessor?: boolean;
@@ -59,15 +59,14 @@ export const OrderTypes: { method: OrderType; property: OrderType } = {
     property: "property",
 };
 
-export type OrderItem = string | Partial<MemberStuff>;
+export type OrderItem = string | Partial<Order>;
 
-export type Slots = Slots[] | Partial<MemberStuff>;
+export type Slots = Slots[] | Partial<Order>;
 
-// Slot === Order
 export type Slot = Exclude<OrderItem, string>;
-export type Order = OrderItem | OrderItem[];
+export type Group = OrderItem | OrderItem[];
 
-export type Groups = Record<string, Order>;
+export type Groups = Record<string, Group>;
 
 export type SortClassMembersConfig = {
     accessorPairPositioning: "getThenSet" | "setThenGet" | "together" | "any";
@@ -91,4 +90,4 @@ export type SortClassMembersConfigInput = {
     alphabetical: boolean;
 };
 
-export type MessageIds = "unorderedMember" | "unorderedClass" | "noClassExpression" | "accessorPair"
+export type MessageIds = "unorderedMember" | "unorderedClass" | "noClassExpression" | "accessorPair";

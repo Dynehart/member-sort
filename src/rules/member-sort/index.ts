@@ -1,2 +1,2 @@
 export { defaultOptions } from "./consts";
-export { rule as memberSort } from "./sort-member";
+export { memberSort } from "./main";
