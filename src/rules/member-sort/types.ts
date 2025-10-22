@@ -1,5 +1,7 @@
 import { TSESTree } from "@typescript-eslint/utils";
 
+export type ClassMember = Exclude<TSESTree.ClassElement, TSESTree.StaticBlock | TSESTree.TSIndexSignature>;
+
 export type AcceptableSlot = {
     index: number;
     score: number;

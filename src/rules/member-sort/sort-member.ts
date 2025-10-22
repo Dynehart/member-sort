@@ -5,6 +5,7 @@ import { isAccessor, reportProblem } from "./reporter";
 
 import type {
     AcceptableSlot,
+    ClassMember,
     Group,
     Groups,
     Kind,
@@ -35,6 +36,7 @@ export const sortClassMembersRule = (
     const locale = options.locale || "en-US";
 
     const ClassDeclaration: RuleFunction<TSESTree.ClassDeclaration> = (node) => {
+        console.log(node.parent);
         let members = getClassMemberInfos(node, context.sourceCode, orderedSlots);
 
         // check for out-of-order and separated get/set pairs
@@ -172,9 +174,7 @@ const groupPrivateFieldsWithAccessors = (members: MemberInfo[]): void => {
  */
 const normalizePrivateName = (name: string): string => name.replace(/^(#|_){1,2}/, "");
 
-type ClassMember = Exclude<TSESTree.ClassElement, TSESTree.StaticBlock | TSESTree.TSIndexSignature>;
-
-const getClassMemberInfos = (
+export const getClassMemberInfos = (
     classDeclaration: TSESTree.ClassDeclaration,
     sourceCode: Readonly<TSESLint.SourceCode>,
     orderedSlots: Slot[],
@@ -196,7 +196,7 @@ const getClassMemberInfos = (
     return members;
 };
 
-const getMemberInfo = (node: ClassMember, sourceCode: Readonly<TSESLint.SourceCode>): MemberInfo => {
+export const getMemberInfo = (node: ClassMember, sourceCode: Readonly<TSESLint.SourceCode>): MemberInfo => {
     const isPrivate = node.key.type === AST_NODE_TYPES.PrivateIdentifier || node.accessibility === "private";
     let name: string;
     let type: "property" | "method";

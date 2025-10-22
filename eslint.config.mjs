@@ -231,6 +231,13 @@ export const config = defineConfig(
             ...importRules,
             ...rules,
         },
+        settings: {
+            "import/resolver": {
+                typescript: {
+                    project: "./tsconfig.json",
+                },
+            },
+        },
     },
 
     // "node": true
@@ -262,28 +269,30 @@ export const config = defineConfig(
             ...tseslint.configs.disableTypeChecked.rules,
             "sort-keys": ["error", "asc", { allowLineSeparatedGroups: false, caseSensitive: false, natural: true }],
         },
+        settings: {
+            "import/resolver": {
+                node: {
+                    extensions: [".js", ".jsx", ".ts", ".tsx"],
+                },
+                typescript: {
+                    project: "./tsconfig.json",
+                },
+            },
+        },
     },
 
     {
-        ignores: ["dist/*"],
+        ignores: ["dist/*", "tsdown.config.ts"],
     },
 );
 
-config.settings = {
-    "import/core-modules": [
-        // mark these as "virtual" core modules so no-unresolved won't flag them
-        "eslint/config",
-        "typescript-eslint",
-        "eslint-plugin-sort",
-    ],
-    "import/resolver": {
-        node: {
-            extensions: [".js", ".jsx", ".ts", ".tsx"],
-        },
-        typescript: {
-            project: "tsconfig.json",
-        },
-    },
-};
+// config.settings = {
+//     "import/core-modules": [
+//         // mark these as "virtual" core modules so no-unresolved won't flag them
+//         "eslint/config",
+//         "typescript-eslint",
+//         "eslint-plugin-sort",
+//     ],
+// };
 
 export default config;

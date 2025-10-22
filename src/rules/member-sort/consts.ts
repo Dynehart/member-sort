@@ -1,4 +1,3 @@
-
 import { OrderTypes } from "./types";
 
 import type { SortClassMembersConfig } from "./types";
@@ -19,13 +18,19 @@ export const defaultOptions: SortClassMembersConfig = {
         "everything-else": [{}],
         "getters": [{ kind: "get" }],
         "methods": [{ type: "method" }],
+        "private-getters": [{ accessibility: "private", kind: "set" }],
         "private-methods": [{ accessibility: "private", type: "method" }],
         "private-properties": [{ accessibility: "private", type: "property" }],
+        "private-setters": [{ accessibility: "private", kind: "get" }],
         "properties": [{ type: "property" }],
+        "protected-getters": [{ accessibility: "protected", kind: "set" }],
         "protected-methods": [{ accessibility: "protected", type: "method" }],
         "protected-properties": [{ accessibility: "protected", type: "property" }],
+        "protected-setters": [{ accessibility: "protected", kind: "get" }],
+        "public-getters": [{ accessibility: "public", kind: "set" }],
         "public-methods": [{ accessibility: "public", type: "method" }],
         "public-properties": [{ accessibility: "public", type: "property" }],
+        "public-setters": [{ accessibility: "public", kind: "get" }],
         "setters": [{ kind: "set" }],
         "static-methods": [{ static: true, type: "method" }],
         "static-properties": [{ static: true, type: "property" }],
@@ -54,11 +59,16 @@ export const defaultOptions: SortClassMembersConfig = {
         "[properties]",
         "constructor",
         // "[event-handlers]", // reference the custom group defined in the "groups" property
-        "[getters]",
+
+        "[public-getters]",
+        "[protected-getters]",
+        "[private-getters]",
+
         "[public-methods]",
         "[protected-methods]",
         "[private-methods]",
         "[methods]",
+
         "[conventional-private-methods]",
         "[everything-else]",
     ],
