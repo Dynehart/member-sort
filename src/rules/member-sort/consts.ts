@@ -1,6 +1,6 @@
-import { OrderTypes } from "./types";
+import { AST_NODE_TYPES } from "@typescript-eslint/utils";
 
-import type { SortClassMembersConfig } from "./types";
+import type { OrderType, SortClassMembersConfig } from "./types";
 
 export const defaultOptions: SortClassMembersConfig = {
     accessorPairPositioning: "any",
@@ -9,9 +9,10 @@ export const defaultOptions: SortClassMembersConfig = {
     // TODO: use these groupings: https://typescript-eslint.io/rules/member-ordering/
     groups: {
         "accessor-pairs": [{ accessorPair: true }],
-        "arrow-function-properties": [{ propertyType: "ArrowFunctionExpression" }],
+        "arrow-function-properties": [{ propertyType: AST_NODE_TYPES.ArrowFunctionExpression }],
         "async-methods": [{ async: true, type: "method" }],
-        "constructor": [{ name: "constructor", type: OrderTypes.method }],
+        // this one behaves weirdly because the constructor keyword throws of TS so the cast is necessary
+        "constructor": [{ name: "constructor", type: "method" as OrderType }],
         "conventional-private-methods": [{ name: "/_.+/", type: "method" }],
         "conventional-private-properties": [{ name: "/_.+/", type: "property" }],
         // "event-handlers": [{ name: "/on.+/", type: "method" }, "[conventional-private-methods]"],

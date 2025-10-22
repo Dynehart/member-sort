@@ -1,6 +1,3 @@
-
-import { isAccessor } from "./reporter";
-
 import type { MemberInfo, Slot } from "./types";
 
 export const getStringComparer = (str?: string): ((s: string) => boolean) => {
@@ -19,6 +16,14 @@ export const getStringComparer = (str?: string): ((s: string) => boolean) => {
     return (s) => s === str;
 };
 
+/**
+ * compute the normalized name of a property
+ * @param name a variation of `_foo` `#foo` `_#foo` `__foo`
+ * @returns the canonical base name in the form of `foo`
+ */
+export const normalizePrivateName = (name: string): string => name.replace(/^(#|_){1,2}/, "");
+
+export const isAccessor = ({ kind }: MemberInfo): boolean => kind === "get" || kind === "set";
 
 export const comparers: {
     property:

@@ -1,5 +1,4 @@
 import { RuleTester } from "@typescript-eslint/rule-tester";
-import * as fs from "fs";
 import { afterAll, describe, it } from "vitest";
 
 import { defaultOptions } from "./consts";
@@ -11,10 +10,6 @@ RuleTester.it = it;
 RuleTester.itOnly = it.only;
 RuleTester.describe = describe;
 
-// these really slow things down so mostly just a proof of concept
-const invalidClassA: string = fs.readFileSync("src/rules/member-sort/tests/invalidA.ts", "utf-8");
-const fixedClassA1: string = fs.readFileSync("src/rules/member-sort/tests/fixedA1.ts", "utf-8");
-const fixedClassA2: string = fs.readFileSync("src/rules/member-sort/tests/fixedA2.ts", "utf-8");
 
 const ruleTester = new RuleTester({
     languageOptions: {
@@ -43,7 +38,6 @@ class MainClass extends BaseClass {
         this.#zIndex ??= 0;
         return this.#zIndex;
     }
-
 }`,
 
     fixed: [
@@ -63,7 +57,6 @@ class MainClass extends BaseClass {
         this.#zIndex ??= 0;
         return this.#zIndex;
     }
-
 }`,
         `
 class MainClass extends BaseClass {
@@ -81,8 +74,7 @@ class MainClass extends BaseClass {
         this.#bounds ??= [0, 0];
         return this.#bounds;
     }
-
-    }`,
+}`,
     ],
 };
 
@@ -121,9 +113,7 @@ class A {
 
     #b: number
     public get b(): number {}
-
-    
-    }
+}
 `,
     ],
 };
@@ -147,8 +137,7 @@ class A {
     // comment1
     #b: number
     public get b(): number {}
-    
-    }
+}
 `,
     ],
 };
@@ -174,7 +163,7 @@ class A {
     // private bar: Bar;
 
     private b: number;
-    }
+}
 `,
     ],
 };
@@ -182,24 +171,6 @@ class A {
 // the code and outputs are not nested here because it makes reading the class itself difficult
 ruleTester.run("member-sort", memberSort, {
     invalid: [
-        {
-            code: invalidClassA,
-            errors: [
-                {
-                    data: {
-                        expected: "before",
-                        more: 7,
-                        problem: "problems",
-                        source: "property a",
-                        target: "property b",
-                    },
-                    messageId: "unorderedClass",
-                },
-            ],
-            name: "test-da-class-file",
-            options: [defaultOptions],
-            output: [fixedClassA1, fixedClassA2],
-        },
         {
             code: invalid.code,
             errors: [

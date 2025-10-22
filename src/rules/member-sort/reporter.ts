@@ -1,9 +1,11 @@
 import { TSESTree } from "@typescript-eslint/utils";
 
-import type { Context, MemberInfo, MessageIds, ReportProblem } from "./types.ts";
+import { isAccessor } from "./helpers";
+
+import type { Context, MemberInfo, MessageIds, ProblemData } from "./types.ts";
 import type { RuleFix } from "@typescript-eslint/utils/ts-eslint";
 
-type ProblemData = {
+type ReportData = {
     source: string;
     target: string;
     expected: string;
@@ -11,7 +13,7 @@ type ProblemData = {
     problem?: "problem" | "problems";
 };
 
-export const reportProblems = (context: Context, messageId: MessageIds, problems: ReportProblem[]): void => {
+export const reportProblems = (context: Context, messageId: MessageIds, problems: ProblemData[]): void => {
     const options = context.options[0];
 
     for (const problem of problems) {
@@ -25,7 +27,7 @@ export const reportProblems = (context: Context, messageId: MessageIds, problems
     }
 };
 
-export const reportProblem = ({
+const reportProblem = ({
     context,
     messageId,
     problem,
@@ -43,7 +45,7 @@ export const reportProblem = ({
     const options = context.options[0];
 
     const { expected, source, target } = problem;
-    const reportData: ProblemData = {
+    const reportData: ReportData = {
         expected,
         source: getMemberDescription(source, { groupAccessors: options.accessorPairPositioning !== "any" }),
         target: getMemberDescription(target, { groupAccessors: options.accessorPairPositioning !== "any" }),
@@ -60,23 +62,28 @@ export const reportProblem = ({
         data: reportData,
         fix(fixer) {
             const fixes: RuleFix[] = [];
-            if (expected !== "before") {
-                return fixes; // 'after' is rarely safe
-            }
+            // 'after' is rarely safe
+            if (expected !== "before") return fixes;
+
             const spacing: string = " ".repeat(source.node.loc.start.column);
-
             const sourceAfterToken = context.sourceCode.getTokenAfter(source.node);
+            const sourceBeforeToken = context.sourceCode.getTokenBefore(source.node);
 
-            // .slice is to prevent modification of the original array
+            if (!sourceAfterToken) throw new Error("is this even possible for us?");
+
+            const removeRange: [number, number] = [
+                source.node.range[0] - source.node.loc.start.column - 1,
+                sourceAfterToken.range[0] - sourceAfterToken.loc.start.column - 1,
+            ];
+
             const targetComments: TSESTree.Comment[] = context.sourceCode.getCommentsBefore(target.node);
+            const sourceComments: TSESTree.Comment[] = context.sourceCode.getCommentsBefore(source.node);
 
             const decorators = "decorators" in target.node ? target.node.decorators : [];
             // TODO: this is a problem with multiple decorators
             const targetDecorator = decorators.slice(-1).pop();
             const insertTargetNode = targetComments[0] ?? targetDecorator?.parent ?? target.node;
             const sourceText: string[] = [];
-
-            const sourceComments: TSESTree.Comment[] = context.sourceCode.getCommentsBefore(source.node);
 
             if (sourceComments[0] !== undefined) {
                 // check for just the first element instead of length to make access easier
@@ -92,9 +99,9 @@ export const reportProblem = ({
                         continue;
                     }
 
-                    fixes.push(fixer.remove(comment));
+                    removeRange[0] = Math.min(removeRange[0], comment.range[0] - comment.loc.start.column - 1);
+
                     sourceText.push(
-                        // the very first
                         `${newlines}${spacing}${context.sourceCode.getText(comment)}${determineNodeSeperator(
                             comment,
                             source.node,
@@ -103,7 +110,6 @@ export const reportProblem = ({
                 }
             }
 
-            fixes.push(fixer.remove(source.node));
             sourceText.push(
                 `${spacing}${context.sourceCode.getText(source.node)}${determineNodeSeperator(
                     source.node,
@@ -111,15 +117,15 @@ export const reportProblem = ({
                 )}`,
             );
 
-            if (sourceAfterToken) {
-                const emptyLines = sourceAfterToken.loc.start.line - source.node.loc.end.line;
-                // remove any empty lines after the node including self
-                if (emptyLines > 0) {
-                    fixes.push(fixer.removeRange([source.node.range[1], sourceAfterToken.range[0]]));
-                }
-            }
+            // if (sourceAfterToken) {
+            //     const emptyLines = sourceAfterToken.loc.start.line - source.node.loc.end.line;
+            //     // remove any empty lines after the node including self
+            //     if (emptyLines > 0) {
+            //                 console.log('this guy', [source.node.range[1], sourceAfterToken.range[0]])
+            //         fixes.push(fixer.removeRange([source.node.range[1], sourceAfterToken.range[0]]));
+            //     }
+            // }
 
-            // if (target.isLazyLoader !== true) {}
             // newline for any nodes other than accessors
             sourceText.push("\n");
             // spacing for the node we're inserting before
@@ -133,7 +139,13 @@ export const reportProblem = ({
                     sourceText.join(""),
                 ),
             );
-            // fixes.push(fixer.insertTextBefore(insertTargetNode, sourceText.join("")));
+
+            // this handles removing up to the previous token so the previous token does not leave a space between itself and the end of the class
+            if (sourceAfterToken.type === TSESTree.AST_TOKEN_TYPES.Punctuator && sourceBeforeToken) {
+                removeRange[0] = Math.max(removeRange[0] - 1, sourceBeforeToken.range[0] + 1);
+            }
+            // remove doesn't handle removing the line or indentation so we have to use removeRange
+            fixes.push(fixer.removeRange(removeRange));
             return fixes;
         },
         messageId,
@@ -159,8 +171,6 @@ const getMemberDescription = (member: MemberInfo, { groupAccessors }: { groupAcc
 
     return `${member.static ? "static " : ""}${typeName} ${member.name}`;
 };
-
-export const isAccessor = ({ kind }: MemberInfo): boolean => kind === "get" || kind === "set";
 
 // TSESTree.BooleanToken | TSESTree.IdentifierToken | TSESTree.JSXIdentifierToken | TSESTree.JSXTextToken | TSESTree.KeywordToken | TSESTree.NullToken | TSESTree.NumericToken | TSESTree.PrivateIdentifierToken | TSESTree.PunctuatorToken | TSESTree.RegularExpressionToken | TSESTree.StringToken | TSESTree.TemplateToken | null
 const determineNodeSeperator = (

@@ -8,7 +8,6 @@ export class A {
         return this.#b;
     }
 
-    
     public get a(): number {
         this.#a ??= 1;
         return this.#a;

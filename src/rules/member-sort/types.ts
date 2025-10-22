@@ -1,4 +1,4 @@
-import { TSESTree } from "@typescript-eslint/utils";
+import { AST_NODE_TYPES, TSESTree } from "@typescript-eslint/utils";
 
 import type { RuleContext } from "@typescript-eslint/utils/ts-eslint";
 
@@ -13,12 +13,14 @@ export type AcceptableSlot = {
 };
 
 export type OrderType = "method" | "property";
-
+export type Accessibility = "public" | "protected" | "private"
 export type Kind = "constructor" | "get" | "method" | "set" | null;
 
 // TODO: probably can construct this using the actual types of ClassElement
 // export declare type ClassElement = AccessorProperty | MethodDefinition | PropertyDefinition | StaticBlock | TSAbstractAccessorProperty | TSAbstractMethodDefinition | TSAbstractPropertyDefinition | TSIndexSignature;
 type Member = {
+    id: string;
+
     name: string;
     type: OrderType;
     decorators: string[];
@@ -30,14 +32,14 @@ type Member = {
     readonly: boolean;
     static: boolean;
 
-    accessibility: "public" | "protected" | "private";
+    accessibility: Accessibility;
     // only properties seem to have no kind on the node
     kind: Kind;
 
-    propertyType?: string; //
+    propertyType?: AST_NODE_TYPES;
 };
 
-type Order = Omit<Member, "kind"> & {
+export type Order = Omit<Member, "kind"> & {
     kind: "constructor" | "get" | "method" | "set" | "accessor" | "nonAccessor";
     accessorPair?: boolean;
     groupByDecorator?: string | boolean;
@@ -49,20 +51,12 @@ type Order = Omit<Member, "kind"> & {
 export type MemberInfo = Member & {
     node: TSESTree.ClassElement;
 
-    isLazyLoader?: boolean;
-
     // i don't remember what this does
-    id?: string;
 
     // TODO: this might make sense as a singular element
     acceptableSlots?: AcceptableSlot[];
     matchingAccessor?: string;
     isFirstAccessor?: boolean;
-};
-
-export const OrderTypes: { method: OrderType; property: OrderType } = {
-    method: "method",
-    property: "property",
 };
 
 export type OrderItem = string | Partial<Order>;
@@ -88,4 +82,8 @@ export type SortClassMembersConfig = {
 
 export type MessageIds = "unorderedMember" | "unorderedClass" | "noClassExpression" | "accessorPair";
 
-export type ReportProblem = { source: MemberInfo; target: MemberInfo; expected: string };
+export type ProblemData = {
+    source: MemberInfo;
+    target: MemberInfo;
+    expected: string;
+};

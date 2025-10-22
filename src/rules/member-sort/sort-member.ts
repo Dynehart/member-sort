@@ -1,7 +1,7 @@
 import { AST_NODE_TYPES, AST_TOKEN_TYPES, ESLintUtils, TSESLint, TSESTree } from "@typescript-eslint/utils";
 
-import { comparers, getStringComparer } from "./helpers";
-import { isAccessor, reportProblem, reportProblems } from "./reporter";
+import { comparers, getStringComparer, isAccessor, normalizePrivateName } from "./helpers";
+import { reportProblems } from "./reporter";
 
 import type {
     AcceptableSlot,
@@ -11,65 +11,46 @@ import type {
     Groups,
     Kind,
     MemberInfo,
-    MessageIds,
     OrderItem,
-    ReportProblem,
+    ProblemData,
     Slot,
     Slots,
     SortClassMembersConfig,
 } from "./types";
-import type { RuleContext, RuleFunction } from "@typescript-eslint/utils/ts-eslint";
+import type { RuleFunction } from "@typescript-eslint/utils/ts-eslint";
 
-export const sortClassMembersRule = (
-    context: Context,
-): ESLintUtils.RuleListener => {
+export const sortClassMembersRule = (context: Context): ESLintUtils.RuleListener => {
     const options = context.options[0];
 
     const orderedSlots = getExpectedOrder(options);
 
-    const ClassDeclaration: RuleFunction<TSESTree.ClassDeclaration> = (node) => {
+    const ClassDeclaration: RuleFunction<TSESTree.ClassDeclaration | TSESTree.ClassExpression> = (
+        node: TSESTree.ClassDeclaration | TSESTree.ClassExpression,
+    ) => {
         let members = getClassMemberInfos(node, context.sourceCode, orderedSlots);
 
         // check for out-of-order and separated get/set pairs
         const accessorPairProblems = findAccessorPairProblems(members, options);
-        reportProblems(context, "accessorPair", accessorPairProblems)
+        reportProblems(context, "accessorPair", accessorPairProblems);
 
         // this removes any accessors that are tied to their other respective accessor?
         members = members.filter((m) => !(m.matchingAccessor !== undefined && m.isFirstAccessor === true));
 
         if (options.groupPrivateWithAccessors) {
             forEachPair(members, (first, second) => {
-                updateMemberScores(first, second, options);
+                areMembersInCorrectOrder(first, second, options);
             });
 
             groupPrivateFieldsWithAccessors(members);
         }
 
         const problems = findProblems(members, options);
-        reportProblems(context, "unorderedMember", problems)
-    };
-
-    // for now I just disallow ClassExpressions
-    const ClassExpression: RuleFunction<TSESTree.ClassExpression> = (node) => {
-        const tokens = context.sourceCode.getTokens(node);
-        const classToken = tokens.find((token) => token.type === AST_TOKEN_TYPES.Keyword && token.value === "class");
-
-        if (classToken) {
-            context.report({
-                loc: classToken.loc,
-                messageId: "noClassExpression",
-            });
-        } else {
-            context.report({
-                messageId: "noClassExpression",
-                node,
-            });
-        }
+        reportProblems(context, "unorderedMember", problems);
     };
 
     const rules: ESLintUtils.RuleListener = {
         ClassDeclaration,
-        ClassExpression,
+        ClassExpression: ClassDeclaration,
     };
 
     // if (options.sortInterfaces) {
@@ -83,51 +64,31 @@ const groupPrivateFieldsWithAccessors = (members: MemberInfo[]): void => {
     const used = new Set<string>();
 
     for (const member of members) {
-        if (member.id !== undefined && used.has(member.name)) {
-            continue;
-        }
-        if (member.id === undefined) {
-            throw new Error(`${member.name} has not had an id set`);
-        }
+        if (used.has(member.name)) continue;
 
-        // we only apply this to `private _foo` or `#foo`
+        // we only need to check private properties `private _foo` or `#foo`
         if (member.type === "property" && member.private) {
-            // compute the canonical base name to match against accessors
-            // supports "#foo", "_foo" and "__foo" and plain "foo"
             const baseName = normalizePrivateName(member.name);
 
-            // Find accessors with same name as the normalized name and the same staticness
             const matching = members
-                .filter(
-                    (m) =>
-                        m.id !== undefined &&
-                        !used.has(m.name) &&
-                        isAccessor(m) &&
-                        m.static === member.static &&
-                        m.name === baseName,
-                )
+                // Find accessors with same name as the normalized name and the same staticness
+                .filter((m) => !used.has(m.name) && isAccessor(m) && m.static === member.static && m.name === baseName)
                 // TODO: there shouldn't be multiple accessors
                 .filter((m) => m.isFirstAccessor ?? true);
 
-            // private field without getter/setter
+            // these are private field without getter/setter
             if (!matching[0]) {
                 used.add(member.name);
                 continue;
             }
 
-            if (!matching[0].acceptableSlots) {
-                throw new Error();
-            }
+            if (!matching[0].acceptableSlots) throw new Error("should not happen");
 
             const slot = matching[0].acceptableSlots[0];
-            if (slot) {
-                matching[0].isLazyLoader = true;
-                member.acceptableSlots = [{ ...slot, score: slot.score - 1 }];
-            } else {
-                throw new Error("should not happen");
-            }
+            if (!slot) throw new Error("should not happen");
 
-            // mark both getter and setters as used
+            member.acceptableSlots = [{ ...slot, score: slot.score - 1 }];
+            // mark both getter/setters as used
             matching.forEach((m) => used.add(m.name));
         }
 
@@ -135,17 +96,8 @@ const groupPrivateFieldsWithAccessors = (members: MemberInfo[]): void => {
     }
 };
 
-/**
- * converts all of the below to `foo`
- * * `_foo`
- * * `#foo`
- * * `_#foo`
- * * `__foo`
- */
-const normalizePrivateName = (name: string): string => name.replace(/^(#|_){1,2}/, "");
-
-export const getClassMemberInfos = (
-    classDeclaration: TSESTree.ClassDeclaration,
+const getClassMemberInfos = (
+    classDeclaration: TSESTree.ClassDeclaration | TSESTree.ClassExpression,
     sourceCode: Readonly<TSESLint.SourceCode>,
     orderedSlots: Slot[],
 ): MemberInfo[] => {
@@ -156,7 +108,7 @@ export const getClassMemberInfos = (
         .filter((x) => x.type !== AST_NODE_TYPES.TSIndexSignature);
 
     const members = filtered
-        .map((member, i) => ({ ...getMemberInfo(member, sourceCode), id: String(i) }))
+        .map((member, id) => getMemberInfo(member, sourceCode, id))
         .map((memberInfo, _i, memberInfos) => {
             matchAccessorPairs(memberInfos);
             const acceptableSlots = [getAcceptableSlot(memberInfo, orderedSlots)];
@@ -166,12 +118,13 @@ export const getClassMemberInfos = (
     return members;
 };
 
-export const getMemberInfo = (node: ClassMember, sourceCode: Readonly<TSESLint.SourceCode>): MemberInfo => {
+const getMemberInfo = (node: ClassMember, sourceCode: Readonly<TSESLint.SourceCode>, id: number): MemberInfo => {
     const isPrivate = node.key.type === AST_NODE_TYPES.PrivateIdentifier || node.accessibility === "private";
     let name: string;
     let type: "property" | "method";
-    let propertyType: string | undefined;
+    let propertyType: AST_NODE_TYPES | undefined;
     let async = false;
+    let kind: Kind;
 
     const accessibility = node.accessibility ?? "public";
     const abstract =
@@ -195,6 +148,7 @@ export const getMemberInfo = (node: ClassMember, sourceCode: Readonly<TSESLint.S
         type = "property";
 
         if (isPrivate) {
+            // TSESTree.PropertyDefinitionComputedName | TSESTree.PropertyDefinitionNonComputedName | TSESTree.TSAbstractPropertyDefinitionComputedName | TSESTree.TSAbstractPropertyDefinitionNonComputedName
             if ("name" in node.key) {
                 name = node.key.name;
             } else if ("id" in node.key && node.key.id !== null) {
@@ -226,7 +180,7 @@ export const getMemberInfo = (node: ClassMember, sourceCode: Readonly<TSESLint.S
             const keyAfterToken = sourceCode.getTokenAfter(node.key);
 
             if (!keyBeforeToken || !keyAfterToken) {
-                throw new Error("does there need to be a before and after token?");
+                throw new Error("there needs to be a before and after token");
             }
 
             name = sourceCode.getText().slice(keyBeforeToken.range[0], keyAfterToken.range[1]);
@@ -250,7 +204,6 @@ export const getMemberInfo = (node: ClassMember, sourceCode: Readonly<TSESLint.S
     }
 
     const readonly = "readonly" in node && node.readonly;
-    let kind: Kind;
 
     // example where kind doesn't exist:
     // abstract class Base extends Phaser.Scene {
@@ -265,11 +218,12 @@ export const getMemberInfo = (node: ClassMember, sourceCode: Readonly<TSESLint.S
         throw new Error("something went wrong");
     }
 
-    return {
+    const member: MemberInfo = {
         abstract,
         accessibility,
         async,
         decorators,
+        id: id.toString(),
         kind,
         name,
         node,
@@ -280,20 +234,18 @@ export const getMemberInfo = (node: ClassMember, sourceCode: Readonly<TSESLint.S
         static: node.static,
         type,
     };
+    return member;
 };
 
-const findAccessorPairProblems = (
-    members: MemberInfo[],
-    { accessorPairPositioning }: SortClassMembersConfig,
-): ReportProblem[] => {
-    const problems: ReportProblem[] = [];
-    if (accessorPairPositioning === "any") return problems;
+const findAccessorPairProblems = (members: MemberInfo[], options: SortClassMembersConfig): ProblemData[] => {
+    const problems: ProblemData[] = [];
+    if (options.accessorPairPositioning === "any") return problems;
 
     forEachPair(members, (first, second, firstIndex, secondIndex) => {
         if (first.matchingAccessor === second.id) {
             const outOfOrder =
-                (accessorPairPositioning === "getThenSet" && first.kind !== "get") ||
-                (accessorPairPositioning === "setThenGet" && first.kind !== "set");
+                (options.accessorPairPositioning === "getThenSet" && first.kind !== "get") ||
+                (options.accessorPairPositioning === "setThenGet" && first.kind !== "set");
             const outOfPosition = secondIndex - firstIndex !== 1;
 
             if (outOfOrder || outOfPosition) {
@@ -306,8 +258,8 @@ const findAccessorPairProblems = (
     return problems;
 };
 
-const findProblems = (members: MemberInfo[], options: SortClassMembersConfig): ReportProblem[] => {
-    const problems: ReportProblem[] = [];
+const findProblems = (members: MemberInfo[], options: SortClassMembersConfig): ProblemData[] => {
+    const problems: ProblemData[] = [];
 
     forEachPair(members, (first, second) => {
         if (!areMembersInCorrectOrder(first, second, options)) {
@@ -325,18 +277,9 @@ const findProblems = (members: MemberInfo[], options: SortClassMembersConfig): R
     return problems;
 };
 
-const forEachPair = <T>(
-    list: T[],
-    callback: (first: T, second: T, firstIndex: number, secondIndex: number) => void,
-): void => {
-    list.forEach((first, firstIndex) => {
-        list.slice(firstIndex + 1).forEach((second, secondIndex) => {
-            callback(first, second, firstIndex, firstIndex + secondIndex + 1);
-        });
-    });
-};
-
 /**
+ * checks if members are in correct order and - if not - will update their scores
+ *
  * this is done so that the scores of the getter/setters have enough distance to put the private fields between them
  * e.g. the public accessibility of zIndex makes this the correct order here (using default settings)
  * ```
@@ -352,29 +295,6 @@ const forEachPair = <T>(
  *
  * `#zIndex: 9, zIndex:10, #bounds:19, bounds: 20`
  */
-const updateMemberScores = (first: MemberInfo, second: MemberInfo, options: SortClassMembersConfig): void => {
-    const collator = new Intl.Collator(options.locale);
-    if (first.acceptableSlots?.[0] === undefined) return;
-
-    first.acceptableSlots.forEach((a) => {
-        if (second.acceptableSlots === undefined) return;
-
-        second.acceptableSlots.forEach((b) => {
-            if (a.index !== b.index) return;
-            if (a.score !== b.score) return;
-
-            // alphabetical within group
-            if (options.alphabetical || areSlotsAlphabeticallySorted(a, b)) {
-                if (collator.compare(first.name, second.name) <= 0) {
-                    b.score = a.score + 10;
-                } else {
-                    a.score = b.score + 10;
-                }
-            }
-        });
-    });
-};
-
 const areMembersInCorrectOrder = (first: MemberInfo, second: MemberInfo, options: SortClassMembersConfig): boolean => {
     const collator = new Intl.Collator(options.locale);
     if (first.acceptableSlots === undefined) return false;
@@ -388,7 +308,15 @@ const areMembersInCorrectOrder = (first: MemberInfo, second: MemberInfo, options
 
             // alphabetical within group
             if (options.alphabetical || areSlotsAlphabeticallySorted(a, b)) {
-                return collator.compare(first.name, second.name) <= 0;
+                // return collator.compare(first.name, second.name) <= 0;
+
+                if (collator.compare(first.name, second.name) <= 0) {
+                    b.score = a.score + 10;
+                    return true;
+                } else {
+                    a.score = b.score + 10;
+                    return false;
+                }
             }
 
             // if nothing else triggers, we assume the order is fine
@@ -413,12 +341,8 @@ const getAcceptableSlots = (memberInfo: MemberInfo, orderedSlots: Slot[]): Accep
     orderedSlots
         .map((slot, index) => ({ index, score: scoreMember(memberInfo, slot), sort: slot.sort }))
         .filter(({ score }) => score > 0)
-        // these two steps remove the slots that score lower than the highest slot?
         .sort((a, b) => b.score - a.score)
         .filter(({ score }, _i, array) => score === array[0]?.score)
-
-        // sorts by the index
-        // .sort((a, b) => b.index - a.index);
         .sort((a, b) => a.index - b.index);
 
 const scoreMember = (memberInfo: MemberInfo, slot: Slot): number => {
@@ -474,19 +398,19 @@ const expandSlot = (input: Group, groups: Groups): Slots[] => {
         slot = { ...input };
     }
 
-    if (slot.group !== undefined) {
-        if (Object.prototype.hasOwnProperty.call(groups, slot.group)) {
-            const group = groups[slot.group];
-            if (group === undefined) return [];
+    if (slot.group === undefined) {
+        slot.testName = getStringComparer(slot.name);
 
-            return expandSlot(group, groups);
-        }
-        return [];
+        return [slot];
     }
 
-    slot.testName = getStringComparer(slot.name);
+    if (Object.prototype.hasOwnProperty.call(groups, slot.group)) {
+        const group = groups[slot.group];
+        if (group === undefined) return [];
 
-    return [slot];
+        return expandSlot(group, groups);
+    }
+    return [];
 };
 
 const matchAccessorPairs = (members: MemberInfo[]) => {
@@ -497,6 +421,17 @@ const matchAccessorPairs = (members: MemberInfo[]) => {
             first.matchingAccessor = second.id;
             second.matchingAccessor = first.id;
         }
+    });
+};
+
+const forEachPair = <T>(
+    list: T[],
+    callback: (first: T, second: T, firstIndex: number, secondIndex: number) => void,
+): void => {
+    list.forEach((first, firstIndex) => {
+        list.slice(firstIndex + 1).forEach((second, secondIndex) => {
+            callback(first, second, firstIndex, firstIndex + secondIndex + 1);
+        });
     });
 };
 

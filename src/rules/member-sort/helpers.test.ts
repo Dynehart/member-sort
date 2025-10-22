@@ -1,7 +1,7 @@
 import { AST_NODE_TYPES, TSESTree } from "@typescript-eslint/utils";
 import { expect, test } from "vitest";
 
-import { isAccessor } from "./reporter";
+import { isAccessor } from "./helpers";
 
 import type { MemberInfo } from "./types";
 
