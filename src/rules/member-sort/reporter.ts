@@ -1,7 +1,7 @@
 import { TSESTree } from "@typescript-eslint/utils";
 
-import type { MemberInfo, MessageIds, SortClassMembersConfig } from "./types.ts";
-import type { RuleContext, RuleFix } from "@typescript-eslint/utils/ts-eslint";
+import type { Context, MemberInfo, MessageIds, ReportProblem } from "./types.ts";
+import type { RuleFix } from "@typescript-eslint/utils/ts-eslint";
 
 type ProblemData = {
     source: string;
@@ -11,33 +11,45 @@ type ProblemData = {
     problem?: "problem" | "problems";
 };
 
+export const reportProblems = (context: Context, messageId: MessageIds, problems: ReportProblem[]): void => {
+    const options = context.options[0];
+
+    for (const problem of problems) {
+        reportProblem({
+            context,
+            messageId,
+            problem,
+            problemCount: problems.length,
+        });
+        if (options.reportType === "single") break;
+    }
+};
+
 export const reportProblem = ({
     context,
-    groupAccessors,
     messageId,
     problem,
     problemCount,
-    stopAfterFirst,
 }: {
+    context: Context;
     problem: {
         source: MemberInfo;
         target: MemberInfo;
         expected: string;
     };
     messageId: MessageIds;
-    context: Readonly<RuleContext<MessageIds, [SortClassMembersConfig]>>;
-    stopAfterFirst: boolean;
     problemCount: number;
-    groupAccessors?: boolean;
 }): void => {
+    const options = context.options[0];
+
     const { expected, source, target } = problem;
     const reportData: ProblemData = {
         expected,
-        source: getMemberDescription(source, { groupAccessors }),
-        target: getMemberDescription(target, { groupAccessors }),
+        source: getMemberDescription(source, { groupAccessors: options.accessorPairPositioning !== "any" }),
+        target: getMemberDescription(target, { groupAccessors: options.accessorPairPositioning !== "any" }),
     };
 
-    if (stopAfterFirst && problemCount > 1) {
+    if (options.reportType === "single" && problemCount > 1) {
         messageId = "unorderedClass";
 
         reportData.more = problemCount - 1;
@@ -65,7 +77,6 @@ export const reportProblem = ({
             const sourceText: string[] = [];
 
             const sourceComments: TSESTree.Comment[] = context.sourceCode.getCommentsBefore(source.node);
-
 
             if (sourceComments[0] !== undefined) {
                 // check for just the first element instead of length to make access easier

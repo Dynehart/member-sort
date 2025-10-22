@@ -1,6 +1,10 @@
 import { TSESTree } from "@typescript-eslint/utils";
 
+import type { RuleContext } from "@typescript-eslint/utils/ts-eslint";
+
 export type ClassMember = Exclude<TSESTree.ClassElement, TSESTree.StaticBlock | TSESTree.TSIndexSignature>;
+
+export type Context = Readonly<RuleContext<MessageIds, [SortClassMembersConfig]>>;
 
 export type AcceptableSlot = {
     index: number;
@@ -78,18 +82,10 @@ export type SortClassMembersConfig = {
     order: OrderItem[];
     sortInterfaces: boolean;
     stopAfterFirstProblem: boolean;
-    alphabetical: boolean;
-};
-
-export type SortClassMembersConfigInput = {
-    accessorPairPositioning?: "getThenSet" | "setThenGet" | "together" | "any";
-    groupPrivateWithAccessors?: boolean;
-    groups?: Groups;
-    locale?: string;
-    order?: OrderItem[];
-    sortInterfaces?: boolean;
-    stopAfterFirstProblem?: boolean;
+    reportType: "single" | "before" | "after" | "all";
     alphabetical: boolean;
 };
 
 export type MessageIds = "unorderedMember" | "unorderedClass" | "noClassExpression" | "accessorPair";
+
+export type ReportProblem = { source: MemberInfo; target: MemberInfo; expected: string };

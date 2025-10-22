@@ -68,6 +68,10 @@ export const schema: readonly JSONSchema4[] = [
                 type: "string",
             },
             order: { $ref: "#/definitions/order" },
+            reportType: {
+                enum: ["single", "before", "after", "all"],
+                type: "string",
+            },
             sortInterfaces: {
                 type: "boolean",
             },

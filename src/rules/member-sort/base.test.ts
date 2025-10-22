@@ -188,7 +188,6 @@ ruleTester.run("member-sort", memberSort, {
                 {
                     data: {
                         expected: "before",
-                        // wtf where does this come from?
                         more: 7,
                         problem: "problems",
                         source: "property a",
@@ -207,7 +206,6 @@ ruleTester.run("member-sort", memberSort, {
                 {
                     data: {
                         expected: "before",
-                        // wtf where does this come from?
                         more: 7,
                         problem: "problems",
                         source: "property zIndex",
@@ -221,12 +219,55 @@ ruleTester.run("member-sort", memberSort, {
             output: invalid.fixed,
         },
         {
+            code: invalid.code,
+            errors: [
+                {
+                    data: {
+                        expected: "before",
+                        problem: "problems",
+                        source: "property zIndex",
+                        target: "property bounds",
+                    },
+                    messageId: "unorderedMember",
+                },
+                {
+                    data: {
+                        expected: "before",
+                        problem: "problems",
+                        source: "property zIndex",
+                        target: "getter bounds",
+                    },
+                    messageId: "unorderedMember",
+                },
+                {
+                    data: {
+                        expected: "before",
+                        problem: "problems",
+                        source: "getter zIndex",
+                        target: "property bounds",
+                    },
+                    messageId: "unorderedMember",
+                },
+                {
+                    data: {
+                        expected: "before",
+                        problem: "problems",
+                        source: "getter zIndex",
+                        target: "getter bounds",
+                    },
+                    messageId: "unorderedMember",
+                },
+            ],
+            name: "override-alphabetical",
+            options: [{ ...defaultOptions, reportType: "before" }],
+            output: invalid.fixed,
+        },
+        {
             code: classWithComments.code,
             errors: [
                 {
                     data: {
                         expected: "before",
-                        // wtf where does this come from?
                         more: 3,
                         problem: "problems",
                         source: "property a",
@@ -245,7 +286,6 @@ ruleTester.run("member-sort", memberSort, {
                 {
                     data: {
                         expected: "before",
-                        // wtf where does this come from?
                         more: 3,
                         problem: "problems",
                         source: "property a",
@@ -264,7 +304,6 @@ ruleTester.run("member-sort", memberSort, {
                 {
                     data: {
                         expected: "before",
-                        // wtf where does this come from?
                         more: 1,
                         problem: "problem",
                         source: "property a",
@@ -275,6 +314,23 @@ ruleTester.run("member-sort", memberSort, {
             ],
             name: "target-with-comments",
             options: [defaultOptions],
+            output: targetComments.fixed,
+        },
+        {
+            code: targetComments.code,
+            errors: [
+                {
+                    data: {
+                        expected: "before",
+                        problem: "problem",
+                        source: "property a",
+                        target: "property b",
+                    },
+                    messageId: "unorderedMember",
+                },
+            ],
+            name: "target-with-comments-beforeOnly",
+            options: [{ ...defaultOptions, reportType: "before" }],
             output: targetComments.fixed,
         },
     ],

@@ -1,17 +1,19 @@
 import { AST_NODE_TYPES, AST_TOKEN_TYPES, ESLintUtils, TSESLint, TSESTree } from "@typescript-eslint/utils";
 
 import { comparers, getStringComparer } from "./helpers";
-import { isAccessor, reportProblem } from "./reporter";
+import { isAccessor, reportProblem, reportProblems } from "./reporter";
 
 import type {
     AcceptableSlot,
     ClassMember,
+    Context,
     Group,
     Groups,
     Kind,
     MemberInfo,
     MessageIds,
     OrderItem,
+    ReportProblem,
     Slot,
     Slots,
     SortClassMembersConfig,
@@ -19,63 +21,32 @@ import type {
 import type { RuleContext, RuleFunction } from "@typescript-eslint/utils/ts-eslint";
 
 export const sortClassMembersRule = (
-    context: Readonly<RuleContext<MessageIds, [SortClassMembersConfig]>>,
+    context: Context,
 ): ESLintUtils.RuleListener => {
     const options = context.options[0];
 
-    const stopAfterFirst = options.stopAfterFirstProblem;
-    // const sortInterfaces = options.sortInterfaces;
-    const accessorPairPositioning = options.accessorPairPositioning;
-    const order = options.order;
-    const groups = options.groups;
-    const groupPrivateWithAccessors = options.groupPrivateWithAccessors;
-
-    const orderedSlots = getExpectedOrder(order, groups);
-
-    const groupAccessors = accessorPairPositioning !== "any";
-    const locale = options.locale || "en-US";
+    const orderedSlots = getExpectedOrder(options);
 
     const ClassDeclaration: RuleFunction<TSESTree.ClassDeclaration> = (node) => {
         let members = getClassMemberInfos(node, context.sourceCode, orderedSlots);
 
         // check for out-of-order and separated get/set pairs
-        const accessorPairProblems = findAccessorPairProblems(members, accessorPairPositioning);
-        for (const problem of accessorPairProblems) {
-            reportProblem({
-                context,
-                messageId: "accessorPair",
-                problem,
-                problemCount: accessorPairProblems.length,
-                stopAfterFirst,
-            });
-            if (stopAfterFirst) break;
-        }
+        const accessorPairProblems = findAccessorPairProblems(members, options);
+        reportProblems(context, "accessorPair", accessorPairProblems)
 
         // this removes any accessors that are tied to their other respective accessor?
         members = members.filter((m) => !(m.matchingAccessor !== undefined && m.isFirstAccessor === true));
 
-        if (groupPrivateWithAccessors) {
-            const collator = new Intl.Collator(locale);
-
+        if (options.groupPrivateWithAccessors) {
             forEachPair(members, (first, second) => {
-                updateMemberScores(first, second, collator, options.alphabetical);
+                updateMemberScores(first, second, options);
             });
 
             groupPrivateFieldsWithAccessors(members);
         }
 
-        const problems = findProblems(members, locale, options.alphabetical);
-        for (const problem of problems) {
-            reportProblem({
-                context,
-                groupAccessors,
-                messageId: "unorderedMember",
-                problem,
-                problemCount: problems.length,
-                stopAfterFirst,
-            });
-            if (stopAfterFirst) break;
-        }
+        const problems = findProblems(members, options);
+        reportProblems(context, "unorderedMember", problems)
     };
 
     // for now I just disallow ClassExpressions
@@ -101,7 +72,7 @@ export const sortClassMembersRule = (
         ClassExpression,
     };
 
-    // if (sortInterfaces) {
+    // if (options.sortInterfaces) {
     //     rules.TSInterfaceDeclaration = rules.ClassDeclaration;
     // }
 
@@ -313,16 +284,16 @@ export const getMemberInfo = (node: ClassMember, sourceCode: Readonly<TSESLint.S
 
 const findAccessorPairProblems = (
     members: MemberInfo[],
-    positioning: "getThenSet" | "setThenGet" | "together" | "any",
-): { source: MemberInfo; target: MemberInfo; expected: string }[] => {
-    const problems: { source: MemberInfo; target: MemberInfo; expected: string }[] = [];
-    if (positioning === "any") return problems;
+    { accessorPairPositioning }: SortClassMembersConfig,
+): ReportProblem[] => {
+    const problems: ReportProblem[] = [];
+    if (accessorPairPositioning === "any") return problems;
 
     forEachPair(members, (first, second, firstIndex, secondIndex) => {
         if (first.matchingAccessor === second.id) {
             const outOfOrder =
-                (positioning === "getThenSet" && first.kind !== "get") ||
-                (positioning === "setThenGet" && first.kind !== "set");
+                (accessorPairPositioning === "getThenSet" && first.kind !== "get") ||
+                (accessorPairPositioning === "setThenGet" && first.kind !== "set");
             const outOfPosition = secondIndex - firstIndex !== 1;
 
             if (outOfOrder || outOfPosition) {
@@ -335,19 +306,19 @@ const findAccessorPairProblems = (
     return problems;
 };
 
-const findProblems = (
-    members: MemberInfo[],
-    locale: string,
-    alphabetical: boolean,
-): { source: MemberInfo; target: MemberInfo; expected: string }[] => {
-    const problems: { source: MemberInfo; target: MemberInfo; expected: string }[] = [];
-    const collator = new Intl.Collator(locale);
+const findProblems = (members: MemberInfo[], options: SortClassMembersConfig): ReportProblem[] => {
+    const problems: ReportProblem[] = [];
 
     forEachPair(members, (first, second) => {
-        if (!areMembersInCorrectOrder(first, second, collator, alphabetical)) {
-            problems.push({ expected: "before", source: second, target: first });
-            // after will get ignored by fixes but is helpful to show
-            problems.push({ expected: "after", source: first, target: second });
+        if (!areMembersInCorrectOrder(first, second, options)) {
+            if (options.reportType !== "after") {
+                problems.push({ expected: "before", source: second, target: first });
+            }
+
+            if (options.reportType !== "before") {
+                // after will get ignored by fixes but is helpful to show. but does 2x the number of reported errors
+                problems.push({ expected: "after", source: first, target: second });
+            }
         }
     });
 
@@ -381,12 +352,8 @@ const forEachPair = <T>(
  *
  * `#zIndex: 9, zIndex:10, #bounds:19, bounds: 20`
  */
-const updateMemberScores = (
-    first: MemberInfo,
-    second: MemberInfo,
-    collator: Intl.Collator,
-    alphabetical: boolean,
-): void => {
+const updateMemberScores = (first: MemberInfo, second: MemberInfo, options: SortClassMembersConfig): void => {
+    const collator = new Intl.Collator(options.locale);
     if (first.acceptableSlots?.[0] === undefined) return;
 
     first.acceptableSlots.forEach((a) => {
@@ -397,7 +364,7 @@ const updateMemberScores = (
             if (a.score !== b.score) return;
 
             // alphabetical within group
-            if (alphabetical || areSlotsAlphabeticallySorted(a, b)) {
+            if (options.alphabetical || areSlotsAlphabeticallySorted(a, b)) {
                 if (collator.compare(first.name, second.name) <= 0) {
                     b.score = a.score + 10;
                 } else {
@@ -408,12 +375,8 @@ const updateMemberScores = (
     });
 };
 
-const areMembersInCorrectOrder = (
-    first: MemberInfo,
-    second: MemberInfo,
-    collator: Intl.Collator,
-    alphabetical: boolean,
-): boolean => {
+const areMembersInCorrectOrder = (first: MemberInfo, second: MemberInfo, options: SortClassMembersConfig): boolean => {
+    const collator = new Intl.Collator(options.locale);
     if (first.acceptableSlots === undefined) return false;
 
     return first.acceptableSlots.some((a) => {
@@ -424,7 +387,7 @@ const areMembersInCorrectOrder = (
             if (a.score !== b.score) return a.score < b.score;
 
             // alphabetical within group
-            if (alphabetical || areSlotsAlphabeticallySorted(a, b)) {
+            if (options.alphabetical || areSlotsAlphabeticallySorted(a, b)) {
                 return collator.compare(first.name, second.name) <= 0;
             }
 
@@ -486,7 +449,7 @@ const scoreMember = (memberInfo: MemberInfo, slot: Slot): number => {
     return failed ? -1 : totalScore;
 };
 
-const getExpectedOrder = (order: OrderItem[], groups: Groups): Slot[] =>
+const getExpectedOrder = ({ groups, order }: SortClassMembersConfig): Slot[] =>
     flatten<Slot>(order.map((s) => flat(expandSlot(s, groups))));
 
 // this feels bad

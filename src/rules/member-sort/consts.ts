@@ -59,7 +59,6 @@ export const defaultOptions: SortClassMembersConfig = {
         "[properties]",
         "constructor",
         // "[event-handlers]", // reference the custom group defined in the "groups" property
-
         "[public-getters]",
         "[protected-getters]",
         "[private-getters]",
@@ -72,6 +71,7 @@ export const defaultOptions: SortClassMembersConfig = {
         "[conventional-private-methods]",
         "[everything-else]",
     ],
+    reportType: "single",
     sortInterfaces: false,
     stopAfterFirstProblem: true,
 };

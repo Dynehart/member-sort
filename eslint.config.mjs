@@ -128,7 +128,12 @@ const importRules = {
     "import/no-internal-modules": [
         "error",
         {
-            allow: ["@typescript-eslint/utils", "@typescript-eslint/utils/ts-eslint"],
+            // could do just "@typescript-eslint/utils/*"
+            allow: [
+                "@typescript-eslint/utils",
+                "@typescript-eslint/utils/ts-eslint",
+                "@typescript-eslint/utils/json-schema",
+            ],
         },
     ],
     // forces importing named members instead of using them as part of the default
