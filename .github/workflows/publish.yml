@@ -6,7 +6,7 @@ on:
     workflow_dispatch:
         inputs:
             run-id:
-                description: idk
+                description: run-id
                 required: true
                 type: string
 

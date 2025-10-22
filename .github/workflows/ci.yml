@@ -4,6 +4,7 @@ env:
     OWNER: dynehart
     REPO: member-sort
 
+# https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows
 on:
     push:
         branches: ["main", "dev"]
@@ -69,7 +70,7 @@ jobs:
 
             - name: Trigger target workflow
               env:
-                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  GH_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
               run: |
                   curl -X POST \
                     -H "Accept: application/vnd.github+json" \
