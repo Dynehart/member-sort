@@ -1,6 +1,8 @@
 name: Publish
 
 on:
+    push:
+        branches: ["main", "dev"]
     workflow_dispatch:
         inputs:
             run-id:
@@ -8,8 +10,8 @@ on:
                 required: true
                 type: string
 
-    release:
-        types: [created]
+    # release:
+    #     types: [created]
 
 jobs:
     build:
