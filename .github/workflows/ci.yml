@@ -69,5 +69,5 @@ jobs:
                   curl -X POST \
                     -H "Accept: application/vnd.github+json" \
                     -H "Authorization: Bearer $GH_TOKEN" \
-                    https://api.github.com/repos/dynehart/${{ github.repository }}/.github/workflows/publish.yml/dispatches \
-                    -d '{"ref":"main","inputs":{"run-id":"${{ github.run_id }}"}}'
+                    https://api.github.com/repos/dynehart/${{ github.repository }}/dispatches \
+                    -d '{"event_type":"publish","client_payload":{"run-id":"3","integration":true}}'
