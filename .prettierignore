@@ -1,0 +1,4 @@
+dist
+
+# the tests content files
+src/rules/member-sort/tests/*

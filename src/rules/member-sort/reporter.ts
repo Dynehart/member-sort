@@ -56,14 +56,16 @@ export const reportProblem = ({
             const sourceAfterToken = context.sourceCode.getTokenAfter(source.node);
 
             // .slice is to prevent modification of the original array
-            const targetJSDoc = context.sourceCode.getCommentsBefore(target.node).slice(-1).pop();
+            const targetComments: TSESTree.Comment[] = context.sourceCode.getCommentsBefore(target.node);
+
             const decorators = "decorators" in target.node ? target.node.decorators : [];
             // TODO: this is a problem with multiple decorators
             const targetDecorator = decorators.slice(-1).pop();
-            const insertTargetNode = targetJSDoc ?? targetDecorator?.parent ?? target.node;
+            const insertTargetNode = targetComments[0] ?? targetDecorator?.parent ?? target.node;
             const sourceText: string[] = [];
 
             const sourceComments: TSESTree.Comment[] = context.sourceCode.getCommentsBefore(source.node);
+
 
             if (sourceComments[0] !== undefined) {
                 // check for just the first element instead of length to make access easier
