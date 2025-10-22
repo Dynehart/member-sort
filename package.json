@@ -1,15 +1,13 @@
 {
     "name": "eslint-plugin-member-sort",
     "version": "0.1.0",
-    "description": "An ESLint rule to reorder TypeScript class members",
+    "description": "An ESLint rule to reorder class members",
     "main": "./dist/index.js",
     "module": "./dist/index.js",
     "types": "./dist/index.d.ts",
     "type": "module",
     "scripts": {
         "build": "tsdown",
-        "build2": "./node_modules/.bin/tsdown && link",
-        "link": "pnpm link --global",
         "lint": "eslint . --ext .ts",
         "dev": "tsdown --watch",
         "test": "vitest",
@@ -24,7 +22,7 @@
         "members",
         "rule"
     ],
-    "author": "Your Name",
+    "author": "Dynehart",
     "license": "MIT",
     "devDependencies": {
         "@eslint/js": "^9.38.0",
