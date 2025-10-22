@@ -36,7 +36,6 @@ export const sortClassMembersRule = (
     const locale = options.locale || "en-US";
 
     const ClassDeclaration: RuleFunction<TSESTree.ClassDeclaration> = (node) => {
-        console.log(node.parent);
         let members = getClassMemberInfos(node, context.sourceCode, orderedSlots);
 
         // check for out-of-order and separated get/set pairs
@@ -181,9 +180,9 @@ export const getClassMemberInfos = (
 ): MemberInfo[] => {
     const classMemberNodes = classDeclaration.body.body;
 
-    const nonstatic = classMemberNodes.filter((x) => x.type !== AST_NODE_TYPES.StaticBlock);
-    const nonindexed = nonstatic.filter((x) => x.type !== AST_NODE_TYPES.TSIndexSignature);
-    const filtered: ClassMember[] = nonindexed.filter((x) => x.key);
+    const filtered: ClassMember[] = classMemberNodes
+        .filter((x) => x.type !== AST_NODE_TYPES.StaticBlock)
+        .filter((x) => x.type !== AST_NODE_TYPES.TSIndexSignature);
 
     const members = filtered
         .map((member, i) => ({ ...getMemberInfo(member, sourceCode), id: String(i) }))
