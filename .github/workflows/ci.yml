@@ -43,13 +43,21 @@ jobs:
             - name: Install dependencies
               run: pnpm install
 
-            - name: Build
-              run: pnpm build
-
-            - uses: actions/cache@v4
+            - name: Cache node_modules
+              uses: actions/cache@v4
               with:
                   path: node_modules
                   key: ${{ runner.os }}-node-modules-${{ hashFiles('pnpm-lock.yaml') }}
 
-            - name: test
+            - name: Test
               run: pnpm test
+
+            - name: Build
+              run: pnpm build
+
+            - name: Upload build artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                  name: build-dist
+                  path: |
+                      dist
