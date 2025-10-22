@@ -8,9 +8,6 @@ on:
                 required: true
                 type: string
 
-    # release:
-    #     types: [created]
-
 jobs:
     build:
         runs-on: ubuntu-latest
@@ -28,4 +25,4 @@ jobs:
               with:
                   name: dist
                   # path: # optional
-                  # run-id: # optional, default is ${{ github.run_id }}
+                  run-id: 18704398882 # optional, default is ${{ github.run_id }}
