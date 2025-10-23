@@ -3,8 +3,8 @@ name: Publish
 on:
     workflow_dispatch:
         inputs:
-            run-id:
-                description: run-id
+            run_id:
+                description: run_id
                 required: true
                 type: string
                 on:
@@ -22,16 +22,12 @@ jobs:
               with:
                   token: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Build
-              run: echo ${{ inputs.run-id }}
-
             - name: Download a Build Artifact
               uses: actions/download-artifact@v5.0.0
               with:
                   name: dist
-                  # path: # optional
-                  run-id: 18704398882 # optional, default is ${{ github.run_id }}
+                  run-id: ${{inputs.run_id}}
 
             - run: npm publish
               env:
-                NODE_AUTH_TOKEN: ${{secrets.npm_token}}
+                NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
