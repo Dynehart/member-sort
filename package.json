@@ -22,7 +22,7 @@
         "members",
         "rule"
     ],
-    "author": "Dynehart",
+    "author": "dynehart",
     "license": "MIT",
     "devDependencies": {
         "@eslint/js": "^9.38.0",
