@@ -28,9 +28,6 @@ jobs:
                   artifact-ids: ${{inputs.artifact_id}}
                   github-token: ${{ secrets.WORKFLOW_TOKEN }}
                   run-id: ${{inputs.run_id}}
-            
-            - name: list the files
-              run: echo $(ls)
 
             - run: npm publish
               env:
