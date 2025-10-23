@@ -30,6 +30,7 @@ jobs:
               uses: actions/download-artifact@v5.0.0
               with:
                   artifact-ids: ${{inputs.artifact_id}}
+                  github-token: ${{ secrets.WORKFLOW_TOKEN }}
                   run-id: ${{inputs.run_id}}
 
             - run: npm publish
