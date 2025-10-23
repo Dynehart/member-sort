@@ -8,6 +8,10 @@ on:
                 required: true
                 type: string
                 on:
+            artifact_id:
+                description: artifact_id
+                required: true
+                type: string
 
 
 jobs:
@@ -25,6 +29,7 @@ jobs:
             - name: Download a Build Artifact
               uses: actions/download-artifact@v5.0.0
               with:
+                  artifact-ids: ${{inputs.run_id}}
                   run-id: ${{inputs.run_id}}
 
             - run: npm publish
