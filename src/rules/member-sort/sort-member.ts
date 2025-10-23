@@ -67,6 +67,7 @@ const groupPrivateFieldsWithAccessors = (members: MemberInfo[]): void => {
         if (used.has(member.name)) continue;
 
         // we only need to check private properties `private _foo` or `#foo`
+        // TODO: does it make sense to limit this to just private props?
         if (member.type === "property" && member.private) {
             const baseName = normalizePrivateName(member.name);
 

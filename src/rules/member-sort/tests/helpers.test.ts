@@ -1,9 +1,9 @@
 import { AST_NODE_TYPES, TSESTree } from "@typescript-eslint/utils";
 import { expect, test } from "vitest";
 
-import { isAccessor } from "./helpers";
+import { isAccessor } from "../helpers";
 
-import type { MemberInfo } from "./types";
+import type { MemberInfo } from "../types";
 
 test("isAccessor", () => {
     const node: TSESTree.AccessorProperty = {

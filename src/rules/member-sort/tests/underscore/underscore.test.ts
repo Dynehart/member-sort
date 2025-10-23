@@ -1,8 +1,8 @@
 import { RuleTester } from "@typescript-eslint/rule-tester";
 import { afterAll, describe, it } from "vitest";
 
-import { defaultOptions } from "./consts";
-import { memberSort } from "./main";
+import { defaultOptions } from "../../consts";
+import { memberSort } from "../../main";
 
 RuleTester.afterAll = afterAll;
 
@@ -27,16 +27,16 @@ const invalid = {
 class MainClass extends BaseClass {
     protected debugging = false;
 
-    #bounds?: [number, number];
+    private _bounds?: [number, number];
     private get bounds(): [number, number] {
-        this.#bounds ??= [0, 0];
-        return this.#bounds;
+        this._bounds ??= [0, 0];
+        return this._bounds;
     }
 
-    #zIndex?: number;
+    private _zIndex?: number;
     public get zIndex(): number {
-        this.#zIndex ??= 0;
-        return this.#zIndex;
+        this._zIndex ??= 0;
+        return this._zIndex;
     }
 }`,
 
@@ -45,34 +45,34 @@ class MainClass extends BaseClass {
 class MainClass extends BaseClass {
     protected debugging = false;
 
-    #zIndex?: number;
+    private _zIndex?: number;
 
-    #bounds?: [number, number];
+    private _bounds?: [number, number];
     private get bounds(): [number, number] {
-        this.#bounds ??= [0, 0];
-        return this.#bounds;
+        this._bounds ??= [0, 0];
+        return this._bounds;
     }
 
     public get zIndex(): number {
-        this.#zIndex ??= 0;
-        return this.#zIndex;
+        this._zIndex ??= 0;
+        return this._zIndex;
     }
 }`,
         `
 class MainClass extends BaseClass {
     protected debugging = false;
 
-    #zIndex?: number;
+    private _zIndex?: number;
 
     public get zIndex(): number {
-        this.#zIndex ??= 0;
-        return this.#zIndex;
+        this._zIndex ??= 0;
+        return this._zIndex;
     }
 
-    #bounds?: [number, number];
+    private _bounds?: [number, number];
     private get bounds(): [number, number] {
-        this.#bounds ??= [0, 0];
-        return this.#bounds;
+        this._bounds ??= [0, 0];
+        return this._bounds;
     }
 }`,
     ],
@@ -82,36 +82,36 @@ const code = `
 class MainClass extends BaseClass {
     protected debugging = false;
 
-    #zIndex?: number;
+    private _zIndex?: number;
     public get zIndex(): number {
-        this.#zIndex ??= 0;
-        return this.#zIndex;
+        this._zIndex ??= 0;
+        return this._zIndex;
     }
 
-    #bounds?: [number, number];
+    private _bounds?: [number, number];
     private get bounds(): [number, number] {
-        this.#bounds ??= [0, 0];
-        return this.#bounds;
+        this._bounds ??= [0, 0];
+        return this._bounds;
     }
 }`;
 
 const classWithComments = {
     code: `
 class A {
-    #b: number
+    private _b: number
     public get b(): number {}
 
     // comment
-    #a: number
+    private _a: number
 }
 `,
     fixed: [
         `
 class A {
     // comment
-    #a: number
+    private _a: number
 
-    #b: number
+    private _b: number
     public get b(): number {}
 }
 `,
@@ -122,20 +122,20 @@ const classWithSandwichedComments = {
     code: `
 class A {
     // comment1
-    #b: number
+    private _b: number
     public get b(): number {}
     // comment2
-    #a: number
+    private _a: number
 }
 `,
     fixed: [
         `
 class A {
     // comment2
-    #a: number
+    private _a: number
 
     // comment1
-    #b: number
+    private _b: number
     public get b(): number {}
 }
 `,
@@ -149,20 +149,20 @@ class A {
     // public foo: Foo;
     // private bar: Bar;
 
-    private b: number;
-    private a: number;
+    private _b: number;
+    private _a: number;
 }
 `,
     fixed: [
         `
 class A {
 
-    private a: number;
+    private _a: number;
 
     // public foo: Foo;
     // private bar: Bar;
 
-    private b: number;
+    private _b: number;
 }
 `,
     ],
@@ -179,8 +179,8 @@ ruleTester.run("member-sort", memberSort, {
                         expected: "before",
                         more: 7,
                         problem: "problems",
-                        source: "property zIndex",
-                        target: "property bounds",
+                        source: "property _zIndex",
+                        target: "property _bounds",
                     },
                     messageId: "unorderedClass",
                 },
@@ -196,8 +196,8 @@ ruleTester.run("member-sort", memberSort, {
                     data: {
                         expected: "before",
                         problem: "problems",
-                        source: "property zIndex",
-                        target: "property bounds",
+                        source: "property _zIndex",
+                        target: "property _bounds",
                     },
                     messageId: "unorderedMember",
                 },
@@ -205,7 +205,7 @@ ruleTester.run("member-sort", memberSort, {
                     data: {
                         expected: "before",
                         problem: "problems",
-                        source: "property zIndex",
+                        source: "property _zIndex",
                         target: "getter bounds",
                     },
                     messageId: "unorderedMember",
@@ -215,7 +215,7 @@ ruleTester.run("member-sort", memberSort, {
                         expected: "before",
                         problem: "problems",
                         source: "getter zIndex",
-                        target: "property bounds",
+                        target: "property _bounds",
                     },
                     messageId: "unorderedMember",
                 },
@@ -241,8 +241,8 @@ ruleTester.run("member-sort", memberSort, {
                         expected: "before",
                         more: 3,
                         problem: "problems",
-                        source: "property a",
-                        target: "property b",
+                        source: "property _a",
+                        target: "property _b",
                     },
                     messageId: "unorderedClass",
                 },
@@ -259,8 +259,8 @@ ruleTester.run("member-sort", memberSort, {
                         expected: "before",
                         more: 3,
                         problem: "problems",
-                        source: "property a",
-                        target: "property b",
+                        source: "property _a",
+                        target: "property _b",
                     },
                     messageId: "unorderedClass",
                 },
@@ -277,8 +277,8 @@ ruleTester.run("member-sort", memberSort, {
                         expected: "before",
                         more: 1,
                         problem: "problem",
-                        source: "property a",
-                        target: "property b",
+                        source: "property _a",
+                        target: "property _b",
                     },
                     messageId: "unorderedClass",
                 },
@@ -294,8 +294,8 @@ ruleTester.run("member-sort", memberSort, {
                     data: {
                         expected: "before",
                         problem: "problem",
-                        source: "property a",
-                        target: "property b",
+                        source: "property _a",
+                        target: "property _b",
                     },
                     messageId: "unorderedMember",
                 },

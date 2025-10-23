@@ -76,6 +76,12 @@ const reportProblem = ({
                 sourceAfterToken.range[0] - sourceAfterToken.loc.start.column - 1,
             ];
 
+            // use the comments after instead of the token after if they exist
+            const sourceCommentAfter = context.sourceCode.getCommentsAfter(source.node).shift()
+            if (sourceCommentAfter) {
+                removeRange[1] = sourceCommentAfter.range[0] - sourceCommentAfter.loc.start.column - 1
+            }
+
             const targetComments: TSESTree.Comment[] = context.sourceCode.getCommentsBefore(target.node);
             const sourceComments: TSESTree.Comment[] = context.sourceCode.getCommentsBefore(source.node);
 

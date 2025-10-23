@@ -19,7 +19,9 @@
         "build": "tsdown",
         "lint": "eslint . --ext .ts",
         "dev": "tsdown --watch",
-        "test": "vitest",
+        "test:all": "vitest",
+        "test":"sh -c 'vitest src/rules/member-sort/tests/$1' --",
+        "test:comments": "pnpm test comments",
         "typecheck": "tsc --noEmit"
     },
     "keywords": [
