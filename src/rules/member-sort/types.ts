@@ -13,7 +13,7 @@ export type AcceptableSlot = {
 };
 
 export type OrderType = "method" | "property";
-export type Accessibility = "public" | "protected" | "private"
+export type Accessibility = "public" | "protected" | "private";
 export type Kind = "constructor" | "get" | "method" | "set" | null;
 
 // TODO: probably can construct this using the actual types of ClassElement

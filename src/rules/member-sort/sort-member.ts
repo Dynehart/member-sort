@@ -392,9 +392,12 @@ const expandSlot = (input: Group, groups: Groups): Slots[] => {
     if (Array.isArray(input)) return input.map((x: OrderItem) => expandSlot(x, groups));
 
     let slot: Slot;
-    if (typeof input === "string") {
+    if (typeof input === "string" && input.startsWith("[")) {
         // extracts group name
-        slot = input.startsWith("[") ? { group: input.substring(1, input.length - 1) } : { name: input };
+        slot = { group: input.substring(1, input.length - 1) };
+    } else if (typeof input === "string") {
+        // this is for an exact match like "init"
+        slot = { name: input };
     } else {
         slot = { ...input };
     }

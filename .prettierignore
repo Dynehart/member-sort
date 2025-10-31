@@ -1,4 +1,5 @@
 dist
 
 # the tests content files
-src/rules/member-sort/tests/*
+src/rules/member-sort/tests/*.ts
+!src/rules/member-sort/tests/*.test.ts
