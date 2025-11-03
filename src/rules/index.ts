@@ -1,1 +1,1 @@
-export { defaultOptions, memberSort } from "./member-sort";
+export { defaultOptions, memberSort, phaserOptions } from "./member-sort";

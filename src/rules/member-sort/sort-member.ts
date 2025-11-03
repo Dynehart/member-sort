@@ -172,7 +172,7 @@ const getMemberInfo = (node: ClassMember, sourceCode: Readonly<TSESLint.SourceCo
         } else if (node.value) {
             propertyType = node.value.type;
         } else {
-            throw new Error("node has no value");
+            console.error("node has no value")
         }
     } else {
         type = "method";
