@@ -68,9 +68,15 @@ export type Group = OrderItem | OrderItem[];
 
 export type Groups = Record<string, Group>;
 
+export enum AccessorGrouping {
+    Private = "private",
+    All = "all"
+}
+
 export type SortClassMembersConfig = {
     accessorPairPositioning: "getThenSet" | "setThenGet" | "together" | "any";
     groupPrivateWithAccessors: boolean;
+    groupWithAccessors: AccessorGrouping;
     groups: Groups;
     locale: string;
     order: OrderItem[];

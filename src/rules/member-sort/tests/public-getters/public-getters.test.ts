@@ -4,7 +4,6 @@ import { afterAll, describe, it } from "vitest";
 
 import { phaserOptions } from "../../consts";
 import { memberSort } from "../../main";
-import { AccessorGrouping } from "../../types";
 
 RuleTester.afterAll = afterAll;
 
@@ -12,10 +11,10 @@ RuleTester.it = it;
 RuleTester.itOnly = it.only;
 RuleTester.describe = describe;
 
-const invalidClass: string = fs.readFileSync("src/rules/member-sort/tests/base-scene/invalid.ts", "utf-8");
-const fixedClass1: string = fs.readFileSync("src/rules/member-sort/tests/base-scene/fixed1.ts", "utf-8");
+const invalidClass: string = fs.readFileSync("src/rules/member-sort/tests/public-getters/invalid.ts", "utf-8");
+const fixedClass1: string = fs.readFileSync("src/rules/member-sort/tests/public-getters/fixed1.ts", "utf-8");
 
-const validClass: string = fs.readFileSync("src/rules/member-sort/tests/base-scene/valid.ts", "utf-8");
+const validClass: string = fs.readFileSync("src/rules/member-sort/tests/public-getters/valid.ts", "utf-8");
 
 const ruleTester = new RuleTester({
     languageOptions: {
@@ -53,7 +52,7 @@ ruleTester.run("member-sort", memberSort, {
     valid: [
         {
             code: validClass,
-            options: [{ ...phaserOptions, groupWithAccessors: AccessorGrouping.Private }],
+            options: [phaserOptions],
         },
     ],
 });

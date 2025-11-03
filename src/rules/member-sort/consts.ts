@@ -1,13 +1,13 @@
 import { AST_NODE_TYPES } from "@typescript-eslint/utils";
 
-import type { OrderType, SortClassMembersConfig } from "./types";
+import { AccessorGrouping, type OrderType, type SortClassMembersConfig } from "./types";
 
 export const defaultOptions: SortClassMembersConfig = {
     accessorPairPositioning: "getThenSet",
     alphabetical: true,
     groupPrivateWithAccessors: true,
-    // TODO: use these groupings: https://typescript-eslint.io/rules/member-ordering/
     groups: {
+        // TODO: use these groupings: https://typescript-eslint.io/rules/member-ordering/
         "accessor-pairs": [{ accessorPair: true }],
         "arrow-function-properties": [{ propertyType: AST_NODE_TYPES.ArrowFunctionExpression }],
         "async-methods": [{ async: true, type: "method" }],
@@ -52,6 +52,7 @@ export const defaultOptions: SortClassMembersConfig = {
         // "static-methods": { static: true, type: "method" },
         // "static-properties": { static: true, type: "property" },
     },
+    groupWithAccessors: AccessorGrouping.All,
     locale: "en-US",
     order: [
         "[public-static-properties]",
@@ -115,7 +116,6 @@ export const phaserOptions: SortClassMembersConfig = {
         "destroy",
 
         // "[event-handlers]", // reference the custom group defined in the "groups" property
-
 
         "[public-methods]",
         "[protected-methods]",

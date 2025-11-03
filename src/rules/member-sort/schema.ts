@@ -64,6 +64,10 @@ export const schema: readonly JSONSchema4[] = [
                 },
                 type: "object",
             },
+            groupWithAccessors: {
+                enum: ["private", "all"],
+                type: "string",
+            },
             locale: {
                 type: "string",
             },

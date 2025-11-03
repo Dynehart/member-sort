@@ -2,21 +2,22 @@ import { AST_NODE_TYPES, AST_TOKEN_TYPES, ESLintUtils, TSESLint, TSESTree } from
 
 import { comparers, getStringComparer, isAccessor, normalizePrivateName } from "./helpers";
 import { reportProblems } from "./reporter";
-
-import type {
-    AcceptableSlot,
-    ClassMember,
-    Context,
-    Group,
-    Groups,
-    Kind,
-    MemberInfo,
-    OrderItem,
-    ProblemData,
-    Slot,
-    Slots,
-    SortClassMembersConfig,
+import {
+    type AcceptableSlot,
+    AccessorGrouping,
+    type ClassMember,
+    type Context,
+    type Group,
+    type Groups,
+    type Kind,
+    type MemberInfo,
+    type OrderItem,
+    type ProblemData,
+    type Slot,
+    type Slots,
+    type SortClassMembersConfig,
 } from "./types";
+
 import type { RuleFunction } from "@typescript-eslint/utils/ts-eslint";
 
 export const sortClassMembersRule = (context: Context): ESLintUtils.RuleListener => {
@@ -41,7 +42,7 @@ export const sortClassMembersRule = (context: Context): ESLintUtils.RuleListener
                 areMembersInCorrectOrder(first, second, options);
             });
 
-            groupPrivateFieldsWithAccessors(members);
+            groupFieldsWithAccessors(members, options.groupWithAccessors === AccessorGrouping.Private);
         }
 
         const problems = findProblems(members, options);
@@ -60,7 +61,7 @@ export const sortClassMembersRule = (context: Context): ESLintUtils.RuleListener
     return rules;
 };
 
-const groupPrivateFieldsWithAccessors = (members: MemberInfo[]): void => {
+const groupFieldsWithAccessors = (members: MemberInfo[], privateFields: boolean): void => {
     const used = new Set<string>();
 
     for (const member of members) {
@@ -68,7 +69,7 @@ const groupPrivateFieldsWithAccessors = (members: MemberInfo[]): void => {
 
         // we only need to check private properties `private _foo` or `#foo`
         // TODO: does it make sense to limit this to just private props?
-        if (member.type === "property" && member.private) {
+        if (member.type === "property" && (member.private || !privateFields)) {
             const baseName = normalizePrivateName(member.name);
 
             const matching = members

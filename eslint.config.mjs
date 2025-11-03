@@ -32,15 +32,18 @@ const rules = {
     ],
 
     "prefer-arrow-callback": ["error"],
+
     "sort/exports": ["off"], // handled by import
     "sort/exports-members": ["off"], // handled by import
 
     "sort/import-members": ["off"], // handled by import
     "sort/imports": ["off"],
 
+    "sort/object-properties": ["error", { caseSensitive: false, natural: true }],
+
     // https://github.com/mskelton/eslint-plugin-sort
     // TODO: remove eslint-plugin-typescript-sort-keys
-    "sort-keys": ["error", "asc", { allowLineSeparatedGroups: true, caseSensitive: true, natural: false }],
+    "sort-keys": ["error", "asc", { allowLineSeparatedGroups: true, caseSensitive: false, natural: true }],
 };
 
 const typescriptRules = {
