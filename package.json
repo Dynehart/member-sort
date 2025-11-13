@@ -1,12 +1,11 @@
 {
     "name": "eslint-plugin-member-sort",
-    "version": "0.1.6",
+    "version": "0.1.7",
     "description": "An ESLint rule to reorder class members",
     "main": "./dist/index.js",
     "module": "./dist/index.js",
     "types": "./dist/index.d.ts",
     "type": "module",
-
     "license": "MIT",
     "author": "dynehart",
     "licenseUrl": "http://www.opensource.org/licenses/mit-license.php",
@@ -14,13 +13,13 @@
         "url": "https://github.com/dynehart/member-sort/issues"
     },
     "homepage": "https://github.com/dynehart/member-sort#readme",
-
     "scripts": {
         "build": "tsdown",
-        "lint": "eslint . --ext .ts",
+        "coverage": "vitest run --coverage",
         "dev": "tsdown --watch",
+        "lint": "eslint . --ext .ts",
         "test:all": "vitest",
-        "test":"sh -c 'vitest src/rules/member-sort/tests/$1' --",
+        "test": "sh -c 'vitest src/rules/member-sort/tests/$1' --",
         "test:comments": "pnpm test comments",
         "typecheck": "tsc --noEmit"
     },
@@ -40,6 +39,7 @@
         "@typescript-eslint/parser": "^8.42.0",
         "@typescript-eslint/rule-tester": "^8.46.2",
         "@typescript-eslint/utils": "^8.46.2",
+        "@vitest/coverage-v8": "^4.0.8",
         "bumpp": "^10.3.1",
         "eslint": "^9.35.0",
         "eslint-config-prettier": "^10.1.8",
@@ -51,7 +51,7 @@
         "tsdown": "^0.15.9",
         "typescript": "^5.9.3",
         "typescript-eslint": "^8.46.2",
-        "vitest": "^3.2.4"
+        "vitest": "^4.0.1"
     },
     "peerDependencies": {
         "eslint": "^9.35.0",

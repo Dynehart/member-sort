@@ -1,5 +1,7 @@
 import { defaultOptions, memberSort } from "./rules";
 
+export { defaultOptions, memberSort, phaserOptions } from "./rules";
+
 export const rules = {
     "member-sort/member-sort": ["error", defaultOptions],
 };
