@@ -1,36 +1,35 @@
 name: Publish
 
 on:
-    workflow_dispatch:
-        inputs:
-            run_id:
-                description: run_id
-                required: true
-                type: string
-                on:
-            artifact_id:
-                description: artifact_id
-                required: true
-                type: string
-
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: run_id
+        required: true
+        type: string
+        on:
+      artifact_id:
+        description: artifact_id
+        required: true
+        type: string
 
 jobs:
-    build:
-        runs-on: ubuntu-latest
-        permissions:
-          contents: read
-          packages: write
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
 
-        steps:
-            - name: Download a Build Artifact
-              uses: actions/download-artifact@v5.0.0
-              with:
-                  artifact-ids: ${{inputs.artifact_id}}
-                  github-token: ${{ secrets.WORKFLOW_TOKEN }}
-                  run-id: ${{inputs.run_id}}
+    steps:
+      - name: Download a Build Artifact
+        uses: actions/download-artifact@v5.0.0
+        with:
+          artifact-ids: ${{inputs.artifact_id}}
+          github-token: ${{ secrets.WORKFLOW_TOKEN }}
+          run-id: ${{inputs.run_id}}
 
-            - run: |
-                echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > ~/.npmrc
-                npm publish
-              env:
-                NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
+      - run: |
+          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > ~/.npmrc
+          npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}

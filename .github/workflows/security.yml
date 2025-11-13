@@ -1,0 +1,46 @@
+name: Security
+
+on:
+  push:
+    branches: ["main", "dev"]
+    paths:
+      - "pnpm-lock.yaml"
+      - "package.json"
+  schedule:
+    # weekly audit on Sundays at 0:00 AM UTC
+    - cron: "0 0 * * 0"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  build:
+    name: Reuse CI workflow (build + setup)
+    uses: ./.github/workflows/ci.yml
+    with:
+      logLevel: info
+    secrets: inherit
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install OSV Scanner
+        run: |
+          curl -sSfL \
+            https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_ubuntu_amd64.deb \
+            -o osv.deb
+          sudo dpkg -i osv.deb
+
+      - name: Run OSV Scanner on PNPM lockfile
+        run: |
+          echo "Scanning pnpm-lock.yaml for vulnerabilities..."
+          osv-scanner --lockfile=pnpm-lock.yaml
+
+      - name: Generate summary
+        run: |
+          echo "### PNPM Security Audit" >> $GITHUB_STEP_SUMMARY
+          echo "OSV Scanner has completed scanning your pnpm-lock.yaml file." >> $GITHUB_STEP_SUMMARY
