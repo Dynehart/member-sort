@@ -290,7 +290,7 @@ export const config = defineConfig(
     },
 
     {
-        ignores: ["dist/*", "tsdown.config.ts"],
+        ignores: ["dist/*", "tsdown.config.ts", "vitest.config.ts"],
     },
 );
 
