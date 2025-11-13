@@ -1,8 +1,8 @@
 # member-sort
 
 [![npm version](https://img.shields.io/npm/v/eslint-plugin-member-sort.svg)](https://www.npmjs.com/package/eslint-plugin-member-sort)
-[![CI](https://github.com/dynehart/member-sort/actions/workflows/ci.yml/badge.svg)](https://github.com/dynehart/eslint-plugin-member-sort/actions)
-[![codecov](https://codecov.io/gh/dynehart/member-sort/graph/badge.svg)](https://codecov.io/gh/dynehart/eslint-plugin-member-sort)
+[![CI](https://github.com/dynehart/member-sort/actions/workflows/ci.yml/badge.svg)](https://github.com/Dynehart/member-sort/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/dynehart/member-sort/graph/badge.svg)](https://app.codecov.io/github/Dynehart/member-sort)
 
 ## Installation
 
