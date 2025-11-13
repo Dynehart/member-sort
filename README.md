@@ -43,3 +43,9 @@ class MainClass extends Phaser.Scene {
 ```
 
 And better handling of comments. Until a need for additional features arise, I will be trying to fix the somewhat clunky spacing
+
+## Testing
+
+You can run tests under a specific path with `pnpm test path`
+
+e.g. `pnpm test comments` will run tests under [comments](./src/rules/member-sort/tests/comments/)

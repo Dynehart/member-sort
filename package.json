@@ -15,12 +15,11 @@
     "homepage": "https://github.com/dynehart/member-sort#readme",
     "scripts": {
         "build": "tsdown",
-        "coverage": "vitest run --coverage",
         "dev": "tsdown --watch",
         "lint": "eslint . --ext .ts",
         "test:all": "vitest",
+        "test:coverage": "vitest run --coverage",
         "test": "sh -c 'vitest src/rules/member-sort/tests/$1' --",
-        "test:comments": "pnpm test comments",
         "typecheck": "tsc --noEmit"
     },
     "keywords": [
