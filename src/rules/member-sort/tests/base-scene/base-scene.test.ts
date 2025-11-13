@@ -2,8 +2,8 @@ import { RuleTester } from "@typescript-eslint/rule-tester";
 import * as fs from "fs";
 import { afterAll, describe, it } from "vitest";
 
-import { phaserOptions } from "../../consts";
 import { memberSort } from "../../main";
+import { phaserOptions } from "../../options";
 import { AccessorGrouping } from "../../types";
 
 RuleTester.afterAll = afterAll;

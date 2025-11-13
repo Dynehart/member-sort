@@ -1,6 +1,6 @@
 import { ESLintUtils } from "@typescript-eslint/utils";
 
-import { defaultOptions } from "./consts";
+import { defaultOptions } from "./options";
 import { schema } from "./schema";
 import { sortClassMembersRule } from "./sort-member";
 

@@ -1,8 +1,8 @@
 import { RuleTester } from "@typescript-eslint/rule-tester";
 import { afterAll, describe, it } from "vitest";
 
-import { defaultOptions } from "../../consts";
 import { memberSort } from "../../main";
+import { defaultOptions } from "../../options";
 
 import type { MessageIds, SortClassMembersConfig } from "../../types";
 import type { InvalidTestCase } from "@typescript-eslint/rule-tester";

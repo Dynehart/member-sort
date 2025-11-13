@@ -1,15 +1,14 @@
 import { RuleTester } from "@typescript-eslint/rule-tester";
 import { afterAll, describe, it } from "vitest";
 
-import { defaultOptions } from "../../consts";
 import { memberSort } from "../../main";
+import { defaultOptions } from "../../options";
 
 RuleTester.afterAll = afterAll;
 
 RuleTester.it = it;
 RuleTester.itOnly = it.only;
 RuleTester.describe = describe;
-
 
 const ruleTester = new RuleTester({
     languageOptions: {
@@ -85,7 +84,8 @@ class MainClass extends BaseClass {
     ],
 };
 
-const valid = {code : `
+const valid = {
+    code: `
 class MainClass extends BaseClass {
     protected debugging = false;
 
@@ -100,9 +100,8 @@ class MainClass extends BaseClass {
         this._bounds ??= [0, 0];
         return this._bounds;
     }
-}`};
-
-
+}`,
+};
 
 // the code and outputs are not nested here because it makes reading the class itself difficult
 ruleTester.run("member-sort", memberSort, {

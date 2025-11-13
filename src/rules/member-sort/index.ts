@@ -1,2 +1,2 @@
-export { defaultOptions, phaserOptions } from "./consts";
 export { memberSort } from "./main";
+export { defaultOptions, phaserOptions } from "./options";

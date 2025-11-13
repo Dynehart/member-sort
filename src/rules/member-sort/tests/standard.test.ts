@@ -2,8 +2,8 @@ import { RuleTester } from "@typescript-eslint/rule-tester";
 import * as fs from "fs";
 import { afterAll, describe, it } from "vitest";
 
-import { defaultOptions } from "../consts";
 import { memberSort } from "../main";
+import { defaultOptions } from "../options";
 
 RuleTester.afterAll = afterAll;
 
@@ -28,7 +28,6 @@ const ruleTester = new RuleTester({
         },
     },
 });
-
 
 // the code and outputs are not nested here because it makes reading the class itself difficult
 ruleTester.run("member-sort", memberSort, {

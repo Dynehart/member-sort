@@ -1,15 +1,14 @@
 import { RuleTester } from "@typescript-eslint/rule-tester";
 import { afterAll, describe, it } from "vitest";
 
-import { defaultOptions } from "../consts";
 import { memberSort } from "../main";
+import { defaultOptions } from "../options";
 
 RuleTester.afterAll = afterAll;
 
 RuleTester.it = it;
 RuleTester.itOnly = it.only;
 RuleTester.describe = describe;
-
 
 const ruleTester = new RuleTester({
     languageOptions: {
