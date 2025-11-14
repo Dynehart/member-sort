@@ -70,7 +70,7 @@ export type Groups = Record<string, Group>;
 
 export enum AccessorGrouping {
     Private = "private",
-    All = "all"
+    All = "all",
 }
 
 export type SortClassMembersConfig = {
@@ -92,4 +92,22 @@ export type ProblemData = {
     source: MemberInfo;
     target: MemberInfo;
     expected: string;
+};
+
+export type Comparer = {
+    property:
+        | "name"
+        | "type"
+        | "static"
+        | "async"
+        | "private"
+        | "accessibility"
+        | "abstract"
+        | "override"
+        | "readonly"
+        | "kind"
+        | "groupByDecorator"
+        | "accessorPair";
+    value: number;
+    test: (m: MemberInfo, s: Slot) => boolean;
 };

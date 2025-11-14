@@ -54,7 +54,15 @@ const typescriptRules = {
         { accessibility: "explicit", ignoredMethodNames: ["constructor"] },
     ],
 
-    "@typescript-eslint/explicit-module-boundary-types": "error",
+    "@typescript-eslint/explicit-function-return-type": ["error"],
+    "@typescript-eslint/explicit-module-boundary-types": [
+        "error",
+        {
+            allowDirectConstAssertionInArrowFunctions: false,
+            allowHigherOrderFunctions: false,
+            allowTypedFunctionExpressions: false,
+        },
+    ],
     "@typescript-eslint/no-inferrable-types": ["error", { ignoreParameters: true, ignoreProperties: true }],
     "@typescript-eslint/no-non-null-assertion": "error",
     "@typescript-eslint/no-shadow": "error",

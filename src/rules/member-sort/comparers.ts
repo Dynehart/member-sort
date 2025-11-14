@@ -1,47 +1,8 @@
-import type { MemberInfo, Slot } from "./types";
+import { getStringComparer, isAccessor } from "./helpers";
 
-export const getStringComparer = (str?: string): ((s: string) => boolean) => {
-    if (str === undefined) {
-        return () => true;
-    }
+import type { Comparer, MemberInfo, Slot } from "./types";
 
-    // is regex pattern
-    if (str.startsWith("/")) {
-        let strPattern = str.substring(1, str.length - 1);
-        if (!strPattern.startsWith("^")) strPattern = `^${strPattern}`;
-        if (!strPattern.endsWith("$")) strPattern += "$";
-        const re = new RegExp(strPattern);
-        return (s) => re.test(s);
-    }
-    return (s) => s === str;
-};
-
-/**
- * compute the normalized name of a property
- * @param name a variation of `_foo` `#foo` `_#foo` `__foo`
- * @returns the canonical base name in the form of `foo`
- */
-export const normalizePrivateName = (name: string): string => name.replace(/^(#|_){1,2}/, "");
-
-export const isAccessor = ({ kind }: MemberInfo): boolean => kind === "get" || kind === "set";
-
-export const comparers: {
-    property:
-        | "name"
-        | "type"
-        | "static"
-        | "async"
-        | "private"
-        | "accessibility"
-        | "abstract"
-        | "override"
-        | "readonly"
-        | "kind"
-        | "groupByDecorator"
-        | "accessorPair";
-    value: number;
-    test: (m: MemberInfo, s: Slot) => boolean;
-}[] = [
+export const comparers: Comparer[] = [
     { property: "type", test: (m, s) => s.type === m.type, value: 10 },
     { property: "static", test: (m, s) => s.static === m.static, value: 10 },
     { property: "accessibility", test: (m, s) => s.accessibility === m.accessibility, value: 10 },
@@ -55,12 +16,10 @@ export const comparers: {
         },
         value: 10,
     },
-
     { property: "abstract", test: (m, s) => s.abstract === m.abstract, value: 10 },
     { property: "override", test: (m, s) => s.override === m.override, value: 10 },
     { property: "readonly", test: (m, s) => s.readonly === m.readonly, value: 10 },
     { property: "async", test: (m, s) => s.async === m.async, value: 10 },
-
     {
         property: "groupByDecorator",
         test: (m: MemberInfo, s: Slot): boolean => {
@@ -75,10 +34,9 @@ export const comparers: {
     },
     {
         property: "accessorPair",
-        test: (m: MemberInfo, _s: Slot) => isAccessor(m) && m.matchingAccessor !== undefined,
+        test: (m) => isAccessor(m) && m.matchingAccessor !== undefined,
         value: 10,
     },
-
     {
         property: "name",
         test: (m, s) => s.testName?.(m.name) === true,

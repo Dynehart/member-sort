@@ -1,6 +1,6 @@
 import { TSESTree } from "@typescript-eslint/utils";
 
-import { isAccessor } from "./helpers";
+import { determineNodeSeperator, getMemberDescription } from "./helpers";
 
 import type { Context, MemberInfo, MessageIds, ProblemData } from "./types.ts";
 import type { RuleFix } from "@typescript-eslint/utils/ts-eslint";
@@ -77,9 +77,9 @@ const reportProblem = ({
             ];
 
             // use the comments after instead of the token after if they exist
-            const sourceCommentAfter = context.sourceCode.getCommentsAfter(source.node).shift()
+            const sourceCommentAfter = context.sourceCode.getCommentsAfter(source.node).shift();
             if (sourceCommentAfter) {
-                removeRange[1] = sourceCommentAfter.range[0] - sourceCommentAfter.loc.start.column - 1
+                removeRange[1] = sourceCommentAfter.range[0] - sourceCommentAfter.loc.start.column - 1;
             }
 
             const targetComments: TSESTree.Comment[] = context.sourceCode.getCommentsBefore(target.node);
@@ -158,93 +158,3 @@ const reportProblem = ({
         node: source.node,
     });
 };
-
-const getMemberDescription = (member: MemberInfo, { groupAccessors }: { groupAccessors?: boolean }): string => {
-    if (member.kind === "constructor") {
-        return "constructor";
-    }
-
-    let typeName;
-    if (member.kind === null) {
-        typeName = member.type;
-    } else if (member.matchingAccessor !== undefined && groupAccessors === true) {
-        typeName = "accessor pair";
-    } else if (isAccessor(member)) {
-        typeName = `${member.kind}ter`;
-    } else {
-        typeName = member.type;
-    }
-
-    return `${member.static ? "static " : ""}${typeName} ${member.name}`;
-};
-
-// TSESTree.BooleanToken | TSESTree.IdentifierToken | TSESTree.JSXIdentifierToken | TSESTree.JSXTextToken | TSESTree.KeywordToken | TSESTree.NullToken | TSESTree.NumericToken | TSESTree.PrivateIdentifierToken | TSESTree.PunctuatorToken | TSESTree.RegularExpressionToken | TSESTree.StringToken | TSESTree.TemplateToken | null
-const determineNodeSeperator = (
-    first:
-        | TSESTree.Comment
-        | TSESTree.Node
-        | TSESTree.BooleanToken
-        | TSESTree.IdentifierToken
-        | TSESTree.JSXIdentifierToken
-        | TSESTree.JSXTextToken
-        | TSESTree.KeywordToken
-        | TSESTree.NullToken
-        | TSESTree.NumericToken
-        | TSESTree.PrivateIdentifierToken
-        | TSESTree.PunctuatorToken
-        | TSESTree.RegularExpressionToken
-        | TSESTree.StringToken
-        | TSESTree.TemplateToken
-        | undefined,
-    second:
-        | TSESTree.Comment
-        | TSESTree.Node
-        | TSESTree.BooleanToken
-        | TSESTree.IdentifierToken
-        | TSESTree.JSXIdentifierToken
-        | TSESTree.JSXTextToken
-        | TSESTree.KeywordToken
-        | TSESTree.NullToken
-        | TSESTree.NumericToken
-        | TSESTree.PrivateIdentifierToken
-        | TSESTree.PunctuatorToken
-        | TSESTree.RegularExpressionToken
-        | TSESTree.StringToken
-        | TSESTree.TemplateToken
-        | null,
-): string => (isTokenOnSameLine(first, second) ? " " : "\n");
-
-const isTokenOnSameLine = (
-    left:
-        | TSESTree.Comment
-        | TSESTree.Node
-        | TSESTree.BooleanToken
-        | TSESTree.IdentifierToken
-        | TSESTree.JSXIdentifierToken
-        | TSESTree.JSXTextToken
-        | TSESTree.KeywordToken
-        | TSESTree.NullToken
-        | TSESTree.NumericToken
-        | TSESTree.PrivateIdentifierToken
-        | TSESTree.PunctuatorToken
-        | TSESTree.RegularExpressionToken
-        | TSESTree.StringToken
-        | TSESTree.TemplateToken
-        | undefined,
-    right:
-        | TSESTree.Comment
-        | TSESTree.Node
-        | TSESTree.BooleanToken
-        | TSESTree.IdentifierToken
-        | TSESTree.JSXIdentifierToken
-        | TSESTree.JSXTextToken
-        | TSESTree.KeywordToken
-        | TSESTree.NullToken
-        | TSESTree.NumericToken
-        | TSESTree.PrivateIdentifierToken
-        | TSESTree.PunctuatorToken
-        | TSESTree.RegularExpressionToken
-        | TSESTree.StringToken
-        | TSESTree.TemplateToken
-        | null,
-): boolean => left?.loc.end.line === right?.loc.start.line;

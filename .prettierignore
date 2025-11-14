@@ -3,3 +3,4 @@ dist
 # the tests content files
 src/rules/member-sort/tests/*.ts
 !src/rules/member-sort/tests/*.test.ts
+src/rules/member-sort/tests/helper.ts

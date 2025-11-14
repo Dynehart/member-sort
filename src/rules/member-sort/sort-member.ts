@@ -1,23 +1,24 @@
 import { AST_NODE_TYPES, AST_TOKEN_TYPES, ESLintUtils, TSESLint, TSESTree } from "@typescript-eslint/utils";
 
-import { comparers, getStringComparer, isAccessor, normalizePrivateName } from "./helpers";
+import { comparers } from "./comparers";
+import { getStringComparer, isAccessor, normalizePrivateName } from "./helpers";
 import { reportProblems } from "./reporter";
-import {
-    type AcceptableSlot,
-    AccessorGrouping,
-    type ClassMember,
-    type Context,
-    type Group,
-    type Groups,
-    type Kind,
-    type MemberInfo,
-    type OrderItem,
-    type ProblemData,
-    type Slot,
-    type Slots,
-    type SortClassMembersConfig,
-} from "./types";
+import { AccessorGrouping } from "./types";
 
+import type {
+    AcceptableSlot,
+    ClassMember,
+    Context,
+    Group,
+    Groups,
+    Kind,
+    MemberInfo,
+    OrderItem,
+    ProblemData,
+    Slot,
+    Slots,
+    SortClassMembersConfig,
+} from "./types";
 import type { RuleFunction } from "@typescript-eslint/utils/ts-eslint";
 
 export const sortClassMembersRule = (context: Context): ESLintUtils.RuleListener => {
@@ -172,7 +173,7 @@ const getMemberInfo = (node: ClassMember, sourceCode: Readonly<TSESLint.SourceCo
         } else if (node.value) {
             propertyType = node.value.type;
         } else {
-            console.error("node has no value")
+            console.error("node has no value");
         }
     } else {
         type = "method";
