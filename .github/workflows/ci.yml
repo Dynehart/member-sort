@@ -103,7 +103,7 @@ jobs:
       - name: Trigger target workflow
         env:
           GH_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
-        if: ${{ steps.set-publish.outputs.publish === true }}
+        if: ${{ steps.set-publish.outputs.publish == true }}
         run: |
           curl -L \
             -X POST \
