@@ -8,11 +8,8 @@ env:
 on:
   push:
     branches: ["main", "dev"]
-    paths:
-      - "package.json"
   pull_request:
     branches: ["main"]
-
   workflow_dispatch:
     inputs:
       publish:
@@ -29,6 +26,29 @@ jobs:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Detect changes
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            pkg:
+              - 'package.json'
+
+      # Determine publish flag:
+      # If triggered manually → use workflow_dispatch input
+      # If triggered by push → publish only if package.json has changed
+      - name: Set publish flag
+        id: set-publish
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "publish=${{ github.event.inputs.publish }}" >> $GITHUB_OUTPUT
+          else
+            echo "publish=${{ steps.changes.outputs.pkg }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: workflow debug
+        run: echo "Publish = ${{ steps.set-publish.outputs.publish }}"
 
       - name: Setup PNPM
         run: |
@@ -83,7 +103,7 @@ jobs:
       - name: Trigger target workflow
         env:
           GH_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
-        if: ${{ inputs.publish }}
+        if: ${{ steps.set-publish.outputs.publish }}
         run: |
           curl -L \
             -X POST \
