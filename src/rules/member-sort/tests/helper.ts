@@ -1,4 +1,5 @@
 import type { MemberInfo, Slot } from "../types";
+import type { TSESTree } from "@typescript-eslint/utils";
 
 export const makeMember = (overrides: Partial<MemberInfo> = {}): MemberInfo =>
     // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
@@ -18,6 +19,13 @@ export const makeMember = (overrides: Partial<MemberInfo> = {}): MemberInfo =>
         type: "method",
         ...overrides,
     } as MemberInfo);
+
+export const makeNode = (overrides: Partial<TSESTree.Node>): TSESTree.Node =>
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+    ({
+        loc: { end: { column: 0, line: 0 }, start: { column: 0, line: 0 } },
+        ...overrides,
+    } as TSESTree.Node);
 
 export const makeSlot = (overrides: Partial<Slot> = {}): Slot =>
     ({

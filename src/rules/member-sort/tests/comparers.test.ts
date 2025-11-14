@@ -167,10 +167,6 @@ describe("comparers", () => {
         expect(comparer.test(member, makeSlot({}))).toBe(false);
     });
 
-    // =========================================================================
-    // name comparer
-    // =========================================================================
-
     it("name comparer uses slot.testName", () => {
         const comparer = byProp("name");
 

@@ -1,7 +1,15 @@
 import { AST_NODE_TYPES, AST_TOKEN_TYPES, ESLintUtils, TSESLint, TSESTree } from "@typescript-eslint/utils";
 
 import { comparers } from "./comparers";
-import { getStringComparer, isAccessor, normalizePrivateName } from "./helpers";
+import {
+    areMembersInCorrectOrder,
+    findAccessorPairProblems,
+    findProblems,
+    forEachPair,
+    getStringComparer,
+    isAccessor,
+    normalizePrivateName,
+} from "./helpers";
 import { reportProblems } from "./reporter";
 import { AccessorGrouping } from "./types";
 
@@ -14,7 +22,6 @@ import type {
     Kind,
     MemberInfo,
     OrderItem,
-    ProblemData,
     Slot,
     Slots,
     SortClassMembersConfig,
@@ -240,99 +247,6 @@ const getMemberInfo = (node: ClassMember, sourceCode: Readonly<TSESLint.SourceCo
     return member;
 };
 
-const findAccessorPairProblems = (members: MemberInfo[], options: SortClassMembersConfig): ProblemData[] => {
-    const problems: ProblemData[] = [];
-    if (options.accessorPairPositioning === "any") return problems;
-
-    forEachPair(members, (first, second, firstIndex, secondIndex) => {
-        if (first.matchingAccessor === second.id) {
-            const outOfOrder =
-                (options.accessorPairPositioning === "getThenSet" && first.kind !== "get") ||
-                (options.accessorPairPositioning === "setThenGet" && first.kind !== "set");
-            const outOfPosition = secondIndex - firstIndex !== 1;
-
-            if (outOfOrder || outOfPosition) {
-                const expected = outOfOrder ? "before" : "after";
-                problems.push({ expected, source: second, target: first });
-            }
-        }
-    });
-
-    return problems;
-};
-
-const findProblems = (members: MemberInfo[], options: SortClassMembersConfig): ProblemData[] => {
-    const problems: ProblemData[] = [];
-
-    forEachPair(members, (first, second) => {
-        if (!areMembersInCorrectOrder(first, second, options)) {
-            if (options.reportType !== "after") {
-                problems.push({ expected: "before", source: second, target: first });
-            }
-
-            if (options.reportType !== "before") {
-                // after will get ignored by fixes but is helpful to show. but does 2x the number of reported errors
-                problems.push({ expected: "after", source: first, target: second });
-            }
-        }
-    });
-
-    return problems;
-};
-
-/**
- * checks if members are in correct order and - if not - will update their scores
- *
- * this is done so that the scores of the getter/setters have enough distance to put the private fields between them
- * e.g. the public accessibility of zIndex makes this the correct order here (using default settings)
- * ```
- * class Foo {
- *   #zIndex: number
- *   public get zIndex(): number {...}
- *   #bounds: [number, number]
- *   private get bounds(): [number, number] {...}
- * }
- * ```
- * to accomplish this, we group all into the same group index but increment the score of `bounds` by 10
- * then each private field is set to `getter.slot.score-1` such that.
- *
- * `#zIndex: 9, zIndex:10, #bounds:19, bounds: 20`
- */
-const areMembersInCorrectOrder = (first: MemberInfo, second: MemberInfo, options: SortClassMembersConfig): boolean => {
-    const collator = new Intl.Collator(options.locale);
-    if (first.acceptableSlots === undefined) return false;
-
-    return first.acceptableSlots.some((a) => {
-        if (second.acceptableSlots === undefined) return true;
-
-        return second.acceptableSlots.some((b) => {
-            if (a.index !== b.index) return a.index < b.index;
-            if (a.score !== b.score) return a.score < b.score;
-
-            // alphabetical within group
-            if (options.alphabetical || areSlotsAlphabeticallySorted(a, b)) {
-                // return collator.compare(first.name, second.name) <= 0;
-
-                if (collator.compare(first.name, second.name) <= 0) {
-                    b.score = a.score + 10;
-                    return true;
-                } else {
-                    a.score = b.score + 10;
-                    return false;
-                }
-            }
-
-            // if nothing else triggers, we assume the order is fine
-            // TODO: i'd rather be opinionated
-            return true;
-        });
-    });
-};
-
-// TODO: add a global override?
-const areSlotsAlphabeticallySorted = (a: AcceptableSlot, b: AcceptableSlot): boolean =>
-    a.sort === "alphabetical" && b.sort === "alphabetical";
-
 // TODO: there should only be one acceptable slot so maybe replace getAcceptableSlots entirely
 const getAcceptableSlot = (memberInfo: MemberInfo, orderedSlots: Slot[]): AcceptableSlot => {
     const acceptableSlots = getAcceptableSlots(memberInfo, orderedSlots);
@@ -419,7 +333,7 @@ const expandSlot = (input: Group, groups: Groups): Slots[] => {
     return [];
 };
 
-const matchAccessorPairs = (members: MemberInfo[]) => {
+const matchAccessorPairs = (members: MemberInfo[]): void => {
     forEachPair(members, (first, second) => {
         const isMatch = first.name === second.name && first.static === second.static;
         if (isAccessor(first) && isAccessor(second) && isMatch) {
@@ -427,17 +341,6 @@ const matchAccessorPairs = (members: MemberInfo[]) => {
             first.matchingAccessor = second.id;
             second.matchingAccessor = first.id;
         }
-    });
-};
-
-const forEachPair = <T>(
-    list: T[],
-    callback: (first: T, second: T, firstIndex: number, secondIndex: number) => void,
-): void => {
-    list.forEach((first, firstIndex) => {
-        list.slice(firstIndex + 1).forEach((second, secondIndex) => {
-            callback(first, second, firstIndex, firstIndex + secondIndex + 1);
-        });
     });
 };
 
