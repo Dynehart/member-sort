@@ -6,26 +6,14 @@ import {
     findAccessorPairProblems,
     findProblems,
     forEachPair,
-    getStringComparer,
+    getExpectedOrder,
     isAccessor,
     normalizePrivateName,
 } from "./helpers";
 import { reportProblems } from "./reporter";
 import { AccessorGrouping } from "./types";
 
-import type {
-    AcceptableSlot,
-    ClassMember,
-    Context,
-    Group,
-    Groups,
-    Kind,
-    MemberInfo,
-    OrderItem,
-    Slot,
-    Slots,
-    SortClassMembersConfig,
-} from "./types";
+import type { AcceptableSlot, ClassMember, Context, Kind, MemberInfo, Slot } from "./types";
 import type { RuleFunction } from "@typescript-eslint/utils/ts-eslint";
 
 export const sortClassMembersRule = (context: Context): ESLintUtils.RuleListener => {
@@ -179,8 +167,6 @@ const getMemberInfo = (node: ClassMember, sourceCode: Readonly<TSESLint.SourceCo
             propertyType = node.typeAnnotation.typeAnnotation.type;
         } else if (node.value) {
             propertyType = node.value.type;
-        } else {
-            console.error("node has no value");
         }
     } else {
         type = "method";
@@ -290,49 +276,6 @@ const scoreMember = (memberInfo: MemberInfo, slot: Slot): number => {
     return failed ? -1 : totalScore;
 };
 
-const getExpectedOrder = ({ groups, order }: SortClassMembersConfig): Slot[] =>
-    flatten<Slot>(order.map((s) => flat(expandSlot(s, groups))));
-
-// this feels bad
-const flat = (slots: Slots[]): Slot[] =>
-    flatten<Slot>(
-        slots.map((slot) => {
-            if (Array.isArray(slot)) {
-                return flat(slot);
-            }
-            return slot;
-        }),
-    );
-
-const expandSlot = (input: Group, groups: Groups): Slots[] => {
-    if (Array.isArray(input)) return input.map((x: OrderItem) => expandSlot(x, groups));
-
-    let slot: Slot;
-    if (typeof input === "string" && input.startsWith("[")) {
-        // extracts group name
-        slot = { group: input.substring(1, input.length - 1) };
-    } else if (typeof input === "string") {
-        // this is for an exact match like "init"
-        slot = { name: input };
-    } else {
-        slot = { ...input };
-    }
-
-    if (slot.group === undefined) {
-        slot.testName = getStringComparer(slot.name);
-
-        return [slot];
-    }
-
-    if (Object.prototype.hasOwnProperty.call(groups, slot.group)) {
-        const group = groups[slot.group];
-        if (group === undefined) return [];
-
-        return expandSlot(group, groups);
-    }
-    return [];
-};
-
 const matchAccessorPairs = (members: MemberInfo[]): void => {
     forEachPair(members, (first, second) => {
         const isMatch = first.name === second.name && first.static === second.static;
@@ -342,13 +285,4 @@ const matchAccessorPairs = (members: MemberInfo[]): void => {
             second.matchingAccessor = first.id;
         }
     });
-};
-
-const flatten = <T>(collection: (T | T[])[]): T[] => {
-    const result = [];
-    for (const item of collection) {
-        if (Array.isArray(item)) result.push(...flatten(item));
-        else result.push(item);
-    }
-    return result;
 };
