@@ -19,6 +19,11 @@ on:
         description: "Log level"
         required: true
         default: "info"
+      publish:
+        description: "Publish Flag"
+        required: true
+        type: boolean
+        default: false
 
 jobs:
   build:
@@ -82,6 +87,7 @@ jobs:
       - name: Trigger target workflow
         env:
           GH_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
+        if: ${{ inputs.publish }}
         run: |
           curl -L \
             -X POST \
