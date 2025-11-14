@@ -42,7 +42,7 @@ jobs:
         id: set-publish
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "publish=${{ github.event.inputs.publish }}" >> $GITHUB_OUTPUT
+            echo "publish=${{ inputs.publish }}" >> $GITHUB_OUTPUT
           else
             echo "publish=${{ steps.changes.outputs.pkg }}" >> $GITHUB_OUTPUT
           fi
@@ -103,7 +103,7 @@ jobs:
       - name: Trigger target workflow
         env:
           GH_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
-        if: ${{ steps.set-publish.outputs.publish }}
+        if: ${{ steps.set-publish.outputs.publish === true }}
         run: |
           curl -L \
             -X POST \
