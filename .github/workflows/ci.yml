@@ -15,12 +15,8 @@ on:
 
   workflow_dispatch:
     inputs:
-      logLevel:
-        description: "Log level"
-        required: true
-        default: "info"
       publish:
-        description: "Publish Flag"
+        description: "Publish?"
         required: true
         type: boolean
         default: false
